@@ -11,6 +11,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
 {
     private readonly WingetService _wingetService;
     private readonly HistoryStore _historyStore;
+    private readonly ExcludedPackagesStore _excludedPackagesStore;
     private readonly ListCollectionView _filteredPackages;
     private readonly IUserConfirmation _confirmation;
     private readonly NotificationService? _notificationService;
@@ -27,12 +28,14 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     public UpdatesPageViewModel(
         WingetService wingetService,
         HistoryStore? historyStore = null,
+        ExcludedPackagesStore? excludedPackagesStore = null,
         IUserConfirmation? confirmation = null,
         NotificationService? notificationService = null)
         : base("Atualizações", "Consulte os aplicativos que possuem atualizações disponíveis.", "↻")
     {
         _wingetService = wingetService;
         _historyStore = historyStore ?? new HistoryStore();
+        _excludedPackagesStore = excludedPackagesStore ?? new ExcludedPackagesStore();
         _confirmation = confirmation ?? new MessageBoxUserConfirmation();
         _notificationService = notificationService;
         Packages = [];
@@ -45,6 +48,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         UpdateSelectedCommand = new AsyncDelegateCommand(UpdateSelectedAsync, CanUpdateSelected);
         CancelUpdateCommand = new DelegateCommand(CancelUpdate, () => IsUpdating);
         OpenStoreCommand = new DelegateCommand(OpenStore, () => Packages.Any(IsMicrosoftStorePackage));
+        ExcludeSelectedCommand = new DelegateCommand(ExcludeSelected, CanExcludeSelected);
     }
 
     public ObservableCollection<UpdateItemViewModel> Packages { get; }
@@ -65,6 +69,8 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     public DelegateCommand CancelUpdateCommand { get; }
 
     public DelegateCommand OpenStoreCommand { get; }
+
+    public DelegateCommand ExcludeSelectedCommand { get; }
 
     public bool HasMicrosoftStoreSource => Packages.Any(IsMicrosoftStorePackage);
 
@@ -164,19 +170,32 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         try
         {
             var result = await _wingetService.DiscoverUpdatesAsync();
-            _historyStore.Append(CreateDiscoveryHistory(result, startedAt));
-            ReplacePackages(result.Packages);
+            var visiblePackages = _excludedPackagesStore.Filter(result.Packages);
+            var displayResult = result with
+            {
+                Packages = visiblePackages,
+                Status = visiblePackages.Count == 0 && result.Packages.Count > 0
+                    ? WingetDiscoveryStatus.NoUpdates
+                    : result.Status,
+                Message = visiblePackages.Count == result.Packages.Count
+                    ? result.Message
+                    : visiblePackages.Count == 0
+                        ? "Nenhuma atualização elegível foi encontrada."
+                        : $"{visiblePackages.Count} atualização(ões) elegível(is) encontrada(s)."
+            };
+            _historyStore.Append(CreateDiscoveryHistory(displayResult, startedAt));
+            ReplacePackages(displayResult.Packages);
             OnPropertyChanged(nameof(HasMicrosoftStoreSource));
             OpenStoreCommand.RaiseCanExecuteChanged();
-            IsError = result.Status is WingetDiscoveryStatus.ExecutionFailed
+            IsError = displayResult.Status is WingetDiscoveryStatus.ExecutionFailed
                 or WingetDiscoveryStatus.SourceFailed
                 or WingetDiscoveryStatus.WinGetUnavailable;
-            StatusMessage = result.Message;
-            if (result.Status == WingetDiscoveryStatus.Success)
+            StatusMessage = displayResult.Message;
+            if (displayResult.Status == WingetDiscoveryStatus.Success)
             {
                 _notificationService?.Publish(new(NotificationKind.Informacao, "Atualizações encontradas", result.Message));
             }
-            if (result.Warnings.Count > 0)
+            if (displayResult.Warnings.Count > 0)
             {
                 StatusMessage += " Alguns registros não puderam ser exibidos.";
             }
@@ -235,6 +254,15 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
             foreach (var package in selectedPackages)
             {
                 CurrentPackageName = package.Name;
+                if (_excludedPackagesStore.IsExcluded(package.Package))
+                {
+                    package.Status = PackageUpdateStatus.Ignored;
+                    package.StatusMessage = "Excluído da atualização antes da execução.";
+                    CompletedUpdates++;
+                    UpdateProgress = (double)CompletedUpdates / selectedPackages.Length * 100;
+                    continue;
+                }
+
                 package.Status = PackageUpdateStatus.InProgress;
                 package.StatusMessage = "Instalação em andamento…";
                 StatusMessage = $"Atualizando {package.Name}…";
@@ -369,6 +397,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         UpdateSelectedCommand.RaiseCanExecuteChanged();
         CancelUpdateCommand.RaiseCanExecuteChanged();
         OpenStoreCommand.RaiseCanExecuteChanged();
+        ExcludeSelectedCommand.RaiseCanExecuteChanged();
     }
 
     private void OpenStore()
@@ -387,6 +416,26 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
 
     private static bool IsMicrosoftStorePackage(UpdateItemViewModel package) =>
         package.Source.Equals("msstore", StringComparison.OrdinalIgnoreCase);
+
+    private bool CanExcludeSelected() => HasSelectedPackages && !IsLoading && !IsUpdating;
+
+    private void ExcludeSelected()
+    {
+        var selected = Packages.Where(package => package.IsSelected).ToArray();
+        if (selected.Length == 0 || !_confirmation.Confirm(
+                "Excluir da atualização",
+                $"Excluir {selected.Length} aplicativo(s) selecionado(s) das próximas atualizações?"))
+        {
+            return;
+        }
+
+        _excludedPackagesStore.Add(selected.Select(package => package.Package));
+        ReplacePackages(Packages
+            .Where(package => !package.IsSelected)
+            .Select(package => package.Package)
+            .ToArray());
+        StatusMessage = $"{selected.Length} aplicativo(s) excluído(s) da atualização.";
+    }
 
     private static HistoryEntry CreateDiscoveryHistory(WingetDiscoveryResult result, DateTimeOffset startedAt) =>
         new(

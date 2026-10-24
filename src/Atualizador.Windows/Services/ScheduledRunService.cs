@@ -6,17 +6,20 @@ public sealed class ScheduledRunService
 {
     private const string MutexName = "Atualizador.Windows.ScheduledUpdate.v1";
     private readonly ScheduleStore _scheduleStore;
-    private readonly WingetService _wingetService;
+    private readonly IPackageUpdateService _wingetService;
     private readonly HistoryStore _historyStore;
+    private readonly ExcludedPackagesStore _excludedPackagesStore;
 
     public ScheduledRunService(
         ScheduleStore? scheduleStore = null,
-        WingetService? wingetService = null,
-        HistoryStore? historyStore = null)
+        IPackageUpdateService? wingetService = null,
+        HistoryStore? historyStore = null,
+        ExcludedPackagesStore? excludedPackagesStore = null)
     {
         _scheduleStore = scheduleStore ?? new ScheduleStore();
         _wingetService = wingetService ?? new WingetService();
         _historyStore = historyStore ?? new HistoryStore();
+        _excludedPackagesStore = excludedPackagesStore ?? new ExcludedPackagesStore();
     }
 
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
@@ -61,6 +64,8 @@ public sealed class ScheduledRunService
 
             packages = discovery.Packages;
         }
+
+        packages = packages.Where(package => !_excludedPackagesStore.IsExcluded(package)).ToArray();
         var results = new List<HistoryPackageResult>();
         foreach (var package in packages)
         {

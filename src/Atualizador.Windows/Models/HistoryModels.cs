@@ -3,7 +3,8 @@ namespace Atualizador.Windows.Models;
 public enum HistoryOperation
 {
     Descoberta,
-    Atualizacao
+    Atualizacao,
+    Instalacao
 }
 
 public enum HistoryEntryStatus

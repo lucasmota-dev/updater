@@ -66,11 +66,14 @@ As etapas 01 a 12 foram implementadas e verificadas no Windows. A solução est�
 O aplicativo oferece:
 
 - interface WPF em português brasileiro, com temas Sistema, Claro e Escuro;
-- cor de destaque predefinida ou hexadecimal personalizada;
+- estilo de botões inspirado no WinHawk / Windows 11 Fluent, com cantos arredondados, foco por teclado e contraste revisado;
+- cor de destaque do sistema, predefinida ou hexadecimal personalizada;
 - descoberta de atualizações com WinGet, sem alterar fontes automaticamente;
-- seleção, filtro por origem, progresso, cancelamento e confirmação antes da atualização;
+- exclusão de aplicativos da atualização com persistência local e gestão exclusiva em Configurações;
+- pesquisa e instalação de novos pacotes pelo WinGet com seleção múltipla, progresso e avisos de procedência;
+- seleção, filtro por origem, progresso, cancelamento e confirmação antes da atualização ou instalação;
 - histórico JSON local em `%LOCALAPPDATA%\\Atualizador.Windows`;
-- agendamento e inicialização opcional por tarefas fixas e removíveis do Agendador de Tarefas;
+- agendamento e inicialização opcional por tarefas fixas e removíveis do Agendador de Tarefas, respeitando as exclusões;
 - ícone local baseado no Material Symbols `system_update` e área de notificação com menu acessível;
 - abertura da página de atualizações da Microsoft Store para itens da origem `msstore`.
 

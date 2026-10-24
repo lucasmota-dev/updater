@@ -29,6 +29,17 @@ public sealed class AppearanceService
     {
         Preferences = Preferences with { Mode = mode };
         ApplyTheme(mode);
+        if (Preferences.AccentHex.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyAccent("SYSTEM");
+        }
+        SavePreferences();
+    }
+
+    public void SetSystemAccent()
+    {
+        Preferences = Preferences with { AccentHex = "SYSTEM" };
+        ApplyAccent("SYSTEM");
         SavePreferences();
     }
 
@@ -110,7 +121,12 @@ public sealed class AppearanceService
 
     private static void ApplyAccent(string hex)
     {
-        if (!TryParseHexColor(hex, out var accent))
+        Color accent;
+        if (hex.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase))
+        {
+            accent = GetSystemAccentColor();
+        }
+        else if (!TryParseHexColor(hex, out accent))
         {
             accent = Color.FromRgb(0, 103, 192);
         }
@@ -126,6 +142,31 @@ public sealed class AppearanceService
         resources["SubtleAccentBrush"] = CreateBrush(Color.FromArgb(0x18, accent.R, accent.G, accent.B));
         resources["SelectionBrush"] = CreateBrush(Color.FromArgb(0x45, accent.R, accent.G, accent.B));
         resources["FocusBrush"] = CreateBrush(accent);
+    }
+
+    public static Color GetSystemAccentColor()
+    {
+        try
+        {
+            const string dwmKey = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\DWM";
+            if (Registry.GetValue(dwmKey, "AccentColor", null) is int dwmColor)
+            {
+                var r = (byte)(dwmColor & 0xFF);
+                var g = (byte)((dwmColor >> 8) & 0xFF);
+                var b = (byte)((dwmColor >> 16) & 0xFF);
+                return Color.FromRgb(r, g, b);
+            }
+
+            return SystemParameters.WindowGlassColor;
+        }
+        catch (SecurityException)
+        {
+            return Color.FromRgb(0, 103, 192);
+        }
+        catch (Exception)
+        {
+            return Color.FromRgb(0, 103, 192);
+        }
     }
 
     private static string ResolveThemeSource(AppearanceMode mode)
@@ -172,9 +213,11 @@ public sealed class AppearanceService
     private static AppearancePreferences Normalize(AppearancePreferences preferences)
     {
         var mode = Enum.IsDefined(preferences.Mode) ? preferences.Mode : AppearanceMode.Sistema;
-        var accent = TryParseHexColor(preferences.AccentHex, out var color)
-            ? ToHex(color)
-            : AppearancePreferences.DefaultAccentHex;
+        var accent = preferences.AccentHex.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase)
+            ? "SYSTEM"
+            : TryParseHexColor(preferences.AccentHex, out var color)
+                ? ToHex(color)
+                : AppearancePreferences.DefaultAccentHex;
         return new AppearancePreferences(AppearancePreferences.CurrentVersion, mode, accent);
     }
 

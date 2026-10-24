@@ -27,13 +27,15 @@ public sealed class SettingsPageViewModel : PageViewModel
         AppearanceService appearanceService,
         ScheduleSettingsViewModel schedule,
         StartupSettingsViewModel startup,
-        TraySettingsViewModel tray)
-        : base("Configurações", "Escolha a aparência e a cor de destaque do aplicativo.", "⚙")
+        TraySettingsViewModel tray,
+        ExcludedPackagesSettingsViewModel excludedPackages)
+        : base("Configurações", "Escolha a aparência, agendamento e gerencie aplicativos excluídos.", "⚙")
     {
         Appearance = new AppearanceSettingsViewModel(appearanceService);
         Schedule = schedule;
         Startup = startup;
         Tray = tray;
+        ExcludedPackages = excludedPackages;
     }
 
     public AppearanceSettingsViewModel Appearance { get; }
@@ -43,11 +45,14 @@ public sealed class SettingsPageViewModel : PageViewModel
     public StartupSettingsViewModel Startup { get; }
 
     public TraySettingsViewModel Tray { get; }
+
+    public ExcludedPackagesSettingsViewModel ExcludedPackages { get; }
 }
 
 public sealed class AppearanceSettingsViewModel : ViewModelBase
 {
-    private static readonly AccentOption CustomAccent = new("Personalizada", "", true);
+    private static readonly AccentOption SystemAccent = new("Cor do sistema", "SYSTEM", false, true);
+    private static readonly AccentOption CustomAccent = new("Personalizada", "", true, false);
     private readonly AppearanceService _appearanceService;
     private AppearanceMode _selectedMode;
     private AccentOption _selectedAccent;
@@ -60,7 +65,7 @@ public sealed class AppearanceSettingsViewModel : ViewModelBase
         _selectedMode = appearanceService.Preferences.Mode;
         _customAccentHex = appearanceService.Preferences.AccentHex;
         _selectedAccent = AccentOptions.FirstOrDefault(option =>
-            option.Hex.Equals(_customAccentHex, StringComparison.OrdinalIgnoreCase)) ?? CustomAccent;
+            option.Hex.Equals(_customAccentHex, StringComparison.OrdinalIgnoreCase)) ?? (appearanceService.Preferences.AccentHex.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase) ? SystemAccent : CustomAccent);
         ApplyCustomAccentCommand = new DelegateCommand(ApplyCustomAccent);
         RestoreDefaultsCommand = new DelegateCommand(RestoreDefaults);
     }
@@ -69,6 +74,7 @@ public sealed class AppearanceSettingsViewModel : ViewModelBase
 
     public IReadOnlyList<AccentOption> AccentOptions { get; } =
     [
+        SystemAccent,
         new("Azul", "#0067C0"),
         new("Roxo", "#744DA9"),
         new("Verde", "#107C10"),
@@ -98,7 +104,13 @@ public sealed class AppearanceSettingsViewModel : ViewModelBase
                 return;
             }
 
-            if (!value.IsCustom)
+            if (value.IsSystem)
+            {
+                CustomAccentHex = string.Empty;
+                ClearValidationMessage();
+                _appearanceService.SetSystemAccent();
+            }
+            else if (!value.IsCustom)
             {
                 CustomAccentHex = value.Hex;
                 ClearValidationMessage();
@@ -156,6 +168,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private PageViewModel _selectedPage;
     private readonly UpdatesPageViewModel _updatesPage;
+    private readonly InstallPageViewModel _installPage;
     private readonly NotificationService _notificationService;
     private readonly TraySettingsViewModel _traySettings;
 
@@ -163,9 +176,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         var appearanceService = new AppearanceService();
         var historyStore = new HistoryStore();
+        var wingetService = new WingetService();
+        var excludedPackagesStore = new ExcludedPackagesStore();
         _notificationService = new NotificationService();
         DismissNotificationCommand = new DelegateCommand(_notificationService.Clear);
-        _updatesPage = new UpdatesPageViewModel(new WingetService(), historyStore, notificationService: _notificationService);
+        _updatesPage = new UpdatesPageViewModel(
+            wingetService,
+            historyStore,
+            excludedPackagesStore,
+            notificationService: _notificationService);
+        _installPage = new InstallPageViewModel(
+            wingetService,
+            historyStore,
+            notificationService: _notificationService);
         var scheduleStore = new ScheduleStore();
         var schedule = new ScheduleSettingsViewModel(
             scheduleStore,
@@ -173,11 +196,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             () => _updatesPage.SelectedPackages);
         var startup = new StartupSettingsViewModel(new StartupTaskService(), new StartupPreferencesStore());
         _traySettings = new TraySettingsViewModel(new TrayPreferencesStore());
+        var excludedSettings = new ExcludedPackagesSettingsViewModel(excludedPackagesStore);
         Pages =
         [
             _updatesPage,
+            _installPage,
             new HistoryPageViewModel(historyStore),
-            new SettingsPageViewModel(appearanceService, schedule, startup, _traySettings)
+            new SettingsPageViewModel(appearanceService, schedule, startup, _traySettings, excludedSettings)
         ];
         _selectedPage = Pages[0];
     }
@@ -194,9 +219,15 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public UpdatesPageViewModel UpdatesPage => _updatesPage;
 
+    public InstallPageViewModel InstallPage => _installPage;
+
     public TraySettingsViewModel TraySettings => _traySettings;
 
     public DelegateCommand DismissNotificationCommand { get; }
 
-    public void Dispose() => _updatesPage.Dispose();
+    public void Dispose()
+    {
+        _updatesPage.Dispose();
+        _installPage.Dispose();
+    }
 }

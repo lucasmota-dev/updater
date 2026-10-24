@@ -78,8 +78,13 @@
                         <Button Margin="8,0,0,0" Content="Limpar seleção" Command="{Binding ClearSelectionCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
                         <Button Margin="8,0,0,0" Content="Atualizar selecionados"
                                 Command="{Binding UpdateSelectedCommand}"
-                                ToolTip="A execução será habilitada na próxima etapa."
+                                ToolTip="Atualizar os pacotes selecionados."
                                 Style="{DynamicResource PrimaryButtonStyle}" />
+                        <Button Margin="8,0,0,0" Content="Excluir da atualização"
+                                Command="{Binding ExcludeSelectedCommand}"
+                                ToolTip="Excluir os aplicativos selecionados das próximas verificações de atualização."
+                                AutomationProperties.Name="Excluir aplicativos selecionados da atualização"
+                                Style="{DynamicResource SecondaryButtonStyle}" />
                         <Button Margin="8,0,0,0" Content="Cancelar"
                                 Command="{Binding CancelUpdateCommand}"
                                 ToolTip="Cancelar o processo atual. O instalador externo pode não reverter alterações."
@@ -175,6 +180,165 @@
                             </ListView.ItemTemplate>
                         </ListView>
                     </Grid>
+                </Grid>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:InstallPageViewModel}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding Title}" Style="{DynamicResource SectionTitleTextStyle}" />
+                        <TextBlock Margin="0,10,0,0" Text="{Binding Description}" TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="1" Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Termo de pesquisa do aplicativo"
+                             Style="{DynamicResource SettingsTextBoxStyle}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding SearchCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <ComboBox Grid.Column="2" ItemsSource="{Binding AvailableSources}"
+                              SelectedItem="{Binding SelectedSource, Mode=TwoWay}"
+                              AutomationProperties.Name="Origem da pesquisa"
+                              Style="{DynamicResource SettingsComboBoxStyle}" />
+                    <Button Grid.Column="4" Content="Pesquisar" Command="{Binding SearchCommand}"
+                            AutomationProperties.Name="Pesquisar aplicativos"
+                            Style="{DynamicResource PrimaryButtonStyle}" />
+                </Grid>
+
+                <Border Grid.Row="2" Margin="0,16,0,12" Padding="14,10" CornerRadius="10">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource SubtleAccentBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsError}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource ErrorSubtleBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource StatusTextStyle}" />
+                        <TextBlock Margin="0,4,0,0" Text="{Binding CurrentPackageName}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                        <ProgressBar Margin="0,8,0,0" Height="5" Minimum="0" Maximum="100"
+                                     Value="{Binding InstallProgress, Mode=OneWay}"
+                                     IsIndeterminate="{Binding IsSearching, Mode=OneWay}"
+                                     Style="{DynamicResource ProgressBarStyle}"
+                                     Foreground="{DynamicResource AccentBrush}" />
+                        <TextBlock Margin="0,8,0,0"
+                                   Text="Aviso: A fonte oficial winget é priorizada. Revise o publicador antes de instalar; a presença no catálogo não garante segurança absoluta."
+                                   TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" />
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="3">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Selecionar todos" Command="{Binding SelectAllCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
+                            <Button Margin="8,0,0,0" Content="Limpar seleção" Command="{Binding ClearSelectionCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
+                            <Button Margin="8,0,0,0" Content="Instalar selecionados" Command="{Binding InstallSelectedCommand}" Style="{DynamicResource PrimaryButtonStyle}" />
+                            <Button Margin="8,0,0,0" Content="Cancelar" Command="{Binding CancelInstallCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
+                            <TextBlock Margin="16,0,0,0" VerticalAlignment="Center"
+                                       Text="{Binding SelectedCount, StringFormat={}{0} selecionado(s)}"
+                                       Style="{DynamicResource CaptionTextStyle}" />
+                        </StackPanel>
+                        <TextBox Grid.Column="1" Width="180" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Filtrar resultados da pesquisa"
+                                 Style="{DynamicResource SettingsTextBoxStyle}" />
+                    </Grid>
+
+                    <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Grid Margin="12,10,12,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="34" />
+                                    <ColumnDefinition Width="2.2*" />
+                                    <ColumnDefinition Width="1.5*" />
+                                    <ColumnDefinition Width="1.1*" />
+                                    <ColumnDefinition Width="0.9*" />
+                                    <ColumnDefinition Width="1.5*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="1" Text="Aplicativo e Publicador" Style="{DynamicResource CaptionTextStyle}" />
+                                <TextBlock Grid.Column="2" Text="Identificador (ID)" Style="{DynamicResource CaptionTextStyle}" />
+                                <TextBlock Grid.Column="3" Text="Versão" Style="{DynamicResource CaptionTextStyle}" />
+                                <TextBlock Grid.Column="4" Text="Origem" Style="{DynamicResource CaptionTextStyle}" />
+                                <TextBlock Grid.Column="5" Text="Situação" Style="{DynamicResource CaptionTextStyle}" />
+                            </Grid>
+
+                            <ListView Grid.Row="1" ItemsSource="{Binding FilteredPackages}"
+                                      Style="{DynamicResource UpdateListStyle}"
+                                      ItemContainerStyle="{DynamicResource UpdateListItemStyle}"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling"
+                                      ScrollViewer.CanContentScroll="True"
+                                      AutomationProperties.Name="Lista de resultados para instalação">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="2.2*" />
+                                                <ColumnDefinition Width="1.5*" />
+                                                <ColumnDefinition Width="1.1*" />
+                                                <ColumnDefinition Width="0.9*" />
+                                                <ColumnDefinition Width="1.5*" />
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                      Style="{DynamicResource CheckBoxStyle}"
+                                                      VerticalAlignment="Center" AutomationProperties.Name="Selecionar para instalação" />
+                                            <StackPanel Grid.Column="1" Margin="8,0,8,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Glyph}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <TextBlock Margin="20,2,0,0" Text="{Binding Publisher, StringFormat={}Publicador: {0}}" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding Id}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                            <TextBlock Grid.Column="3" Text="{Binding Version}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="4" Text="{Binding Source}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="5" Text="{Binding StatusMessage}" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Grid>
         </DataTemplate>
@@ -387,6 +551,48 @@
                                     Style="{DynamicResource SecondaryButtonStyle}" />
                             <TextBlock Margin="0,8,0,0" Text="{Binding Tray.StatusMessage}"
                                        TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox Header="Apps excluídos da atualização" Style="{DynamicResource SettingsGroupStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Aplicativos adicionados a esta lista não receberão atualizações em verificações manuais ou agendadas. A remoção de exclusões é feita exclusivamente nesta tela."
+                                       TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                            <Border Margin="0,12,0,0" Background="{DynamicResource WindowBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
+                                <StackPanel>
+                                    <TextBlock Text="Nenhum aplicativo excluído da atualização.">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionTextStyle}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ExcludedPackages.HasExcludedPackages}" Value="False">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <ItemsControl ItemsSource="{Binding ExcludedPackages.ExcludedPackages}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel Margin="0,6,0,6">
+                                                    <Button DockPanel.Dock="Right" Content="Remover exclusão"
+                                                            Command="{Binding DataContext.ExcludedPackages.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            AutomationProperties.Name="Remover exclusão do aplicativo"
+                                                            Style="{DynamicResource SecondaryButtonStyle}" />
+                                                    <StackPanel Margin="0,0,12,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{Binding Id, StringFormat={}{0} • Origem: }" Foreground="{DynamicResource SecondaryTextBrush}" Style="{DynamicResource CaptionTextStyle}">
+                                                            <Run Text="{Binding Source}" />
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </GroupBox>
 
