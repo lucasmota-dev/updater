@@ -8,7 +8,9 @@ public enum PackageUpdateStatus
     Failed,
     Canceled,
     Ignored,
-    RestartRequired
+    RestartRequired,
+    RequiresElevation,
+    RequiresInteraction
 }
 
 public sealed record PackageUpdateResult(

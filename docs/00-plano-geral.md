@@ -82,3 +82,8 @@ Os itens abaixo foram solicitados e já têm implementação parcial no checkout
 - Etapa 11: conjunto de 21 testes automatizados aprovado, revisão de chamadas de processo/argumentos/caminhos e validações reais sem executar atualização de software.
 - Etapa 12: revisão final concluída; todas as etapas estão documentadas, build/testes/publicação foram repetidos e as limitações conhecidas foram registradas.
 - Melhorias posteriores: bandeja, ícone Material Symbols, script Inno Setup e workflow de release contínuo adicionados; compilação do instalador e execução do workflow remoto permanecem pendentes de ambiente externo.
+- Próximos recursos implementados:
+  - Estilização completa de botões (Primary e Secondary) com referência visual no WinHawk / Windows 11 Fluent (`CornerRadius`, templates explícitos e estados de hover/press/disabled com tokens compartilhados), suporte à cor de destaque do sistema e anel de foco acessível.
+  - Exclusão de aplicativos da atualização: exclusão direta na tela de Atualizações, persistência atômica em `%LOCALAPPDATA%\Atualizador.Windows\excluded-packages.json`, tela de gerenciamento exclusivo em `Configurações > Apps excluídos da atualização` e bloqueio automático de pacotes excluídos em tarefas agendadas e atualizações manuais.
+  - Instalação de aplicativos pelo WinGet: nova página `Instalar`, pesquisa no catálogo `winget`/`msstore`, identificação clara de publicador e origem, avisos de segurança, seleção múltipla com barra de progresso, cancelamento seguro, tratamento de elevação administrativa/interação e registro no histórico como `Instalacao`.
+  - Suíte de testes automatizados expandida para 34 testes com 100% de aprovação.

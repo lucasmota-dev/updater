@@ -231,24 +231,4 @@ public sealed class WingetServiceTests
         Assert.AreEqual(PackageUpdateStatus.Failed, failed.Status);
         StringAssert.Contains(failed.Message, "installer failed");
     }
-
-    private sealed class FakeLocator(string? path) : IExecutableLocator
-    {
-        public string? Locate() => path;
-    }
-
-    private sealed class FakeProcessExecutor(IReadOnlyList<ProcessExecutionResult> results) : IProcessExecutor
-    {
-        private readonly Queue<ProcessExecutionResult> _results = new(results);
-
-        public List<ProcessExecutionRequest> Requests { get; } = [];
-
-        public Task<ProcessExecutionResult> ExecuteAsync(
-            ProcessExecutionRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            Requests.Add(request);
-            return Task.FromResult(_results.Dequeue());
-        }
-    }
 }
