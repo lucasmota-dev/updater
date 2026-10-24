@@ -1,6 +1,6 @@
 # Etapa 11 — Testes e segurança
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Opus 5.5, esforço alto.
 
 ## Objetivo
@@ -32,4 +32,27 @@ Validar fluxos centrais, permissões, tratamento de erros e ausência de atualiz
 
 ## Resultado da execução
 
-Listar comando e resultado de cada teste realmente executado. Não classificar algo não testado como aprovado.
+### Comandos e resultados reais
+
+- `dotnet build Atualizador.Windows.slnx --configuration Release --no-restore`: 0 avisos e 0 erros.
+- `dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build`: 21 testes aprovados, 0 falhas.
+- `problems` nos arquivos principais: nenhum erro encontrado.
+- Aplicativo WPF Release iniciado no Windows e encerrado sem falha.
+- Executável publicado `win-x64` iniciado e encerrado sem falha.
+- WinGet real foi usado somente para `--version`, `source list` e `list --upgrade-available`; nenhuma atualização/instalação foi executada.
+- Task Scheduler real foi usado somente com tarefa temporária criada/desativada/reativada/removida; a tarefa não foi disparada.
+
+### Cobertura de segurança
+
+- Testes usam `IProcessExecutor` e localizador falsos para não executar WinGet real.
+- IDs e origens inválidos são rejeitados antes de montar a atualização.
+- Argumentos são adicionados individualmente por `ArgumentList`; não há `cmd.exe /c`, PowerShell de comando ou argumentos livres na aplicação.
+- `--all` não é usado para seleção parcial e `--include-unknown` só aparece mediante opção explícita.
+- Testes cobrem saída localizada, campos ausentes, duplicidade, erro de fonte, código não zero, cancelamento, persistência corrompida, seleção, tarefa e Store.
+- Nenhum segredo, token ou stdout/stderr integral é persistido.
+
+### Limitações não classificadas como aprovadas
+
+- Não foi feito teste em VM limpa sem SDK; a publicação foi validada no Windows de desenvolvimento.
+- Não foi executada atualização real de aplicativo; isso exige autorização manual explícita.
+- Não foi testado usuário desconectado nem todos os estados possíveis da Microsoft Store.

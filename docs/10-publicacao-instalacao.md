@@ -1,6 +1,6 @@
 # Etapa 10 — Publicação e instalação
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Sonnet 5.5, esforço médio; Opus 5.5/alto para decisões de assinatura/instalador.
 
 ## Objetivo
@@ -28,4 +28,24 @@ Entregar uma publicação autocontida para Windows e documentação clara de ins
 
 ## Resultado da execução
 
-Registrar comando de publicação, artefatos gerados, tamanho, arquitetura e testes em ambiente limpo.
+### Publicação escolhida
+
+- Alvo: Windows x64 (`win-x64`).
+- Distribuição: ZIP simples contendo o executável autocontido em arquivo único.
+- Não foi incorporado WinGet ao pacote. O aplicativo detecta o cliente instalado e explica quando ele está ausente.
+- A tarefa agendada e a inicialização usam caminhos fixos e podem ser removidas pela interface.
+
+### Comandos e resultados
+
+- `dotnet restore src/Atualizador.Windows/Atualizador.Windows.csproj --runtime win-x64`: concluído.
+- `dotnet publish src/Atualizador.Windows/Atualizador.Windows.csproj --configuration Release --no-restore --output artifacts/publish/win-x64 -p:PublishProfile=WinX64`: concluído.
+- Artefato: `artifacts/publish/win-x64/Atualizador.Windows.exe`, aproximadamente 140 MB.
+- Pacote: `artifacts/Atualizador.Windows-0.1.0-win-x64.zip`, aproximadamente 59 MB.
+- Executável publicado iniciado no Windows e encerrado após a verificação.
+
+### Limitações
+
+- A publicação não foi testada em uma VM limpa sem SDK neste ambiente; a validação executada foi no Windows de desenvolvimento.
+- O binário usa o ícone padrão do WPF nesta versão; não há logotipo personalizado.
+- A assinatura de código não foi aplicada porque não existe certificado fornecido.
+- O WinGet deve estar instalado no computador de destino para descoberta e atualização.

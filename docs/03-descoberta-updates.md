@@ -1,6 +1,6 @@
 # Etapa 3 — Descobrir atualizações do WinGet
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Sonnet 5.5, esforço médio; Opus 5.5/alto se o formato da saída for ambíguo.
 
 ## Objetivo
@@ -37,4 +37,28 @@ Verificar a disponibilidade do WinGet e listar pacotes com atualizações, sem i
 
 ## Resultado da execução
 
-Registrar formato de saída observado, versão de WinGet testada, fontes presentes, testes e limitações. Não declarar suporte geral sem evidência.
+### Arquivos alterados
+
+- `src/Atualizador.Windows/Models/UpdatablePackage.cs`, `WingetSource.cs` e `WingetDiscoveryResult.cs`.
+- `src/Atualizador.Windows/Services/ProcessExecution.cs`, `WingetLocator.cs`, `WingetOutputParser.cs`, `WingetSourceParser.cs` e `WingetService.cs`.
+- `tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj` e `tests/Atualizador.Windows.Tests/WingetTests.cs`.
+- `Atualizador.Windows.slnx`, `docs/00-plano-geral.md` e este arquivo.
+
+### Evidências reais
+
+- `winget --version`: `v1.29.380`.
+- `winget source list --disable-interactivity`: fontes `msstore`, `winget` e `winget-font`; `winget-font` estava explícita.
+- `winget list --upgrade-available --disable-interactivity`: encontrou `Microsoft.Edge`, ID `Microsoft.Edge`, versão instalada `155.0.4283.45`, disponível `156.0.4314.42`, origem `winget`.
+- Nenhum comando de instalação, atualização, `source update` ou `source reset` foi executado.
+
+### Verificações
+
+- `dotnet build Atualizador.Windows.slnx --configuration Release --no-restore`: 0 avisos e 0 erros.
+- `dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build`: 9 testes aprovados, 0 falhas.
+- Os testes usam `IProcessExecutor` e `IExecutableLocator` falsos; nenhum teste iniciou o WinGet real.
+
+### Decisões e limitações
+
+- A descoberta usa `winget list --upgrade-available --disable-interactivity`; `--include-unknown` só é acrescentado quando solicitado explicitamente.
+- O parser usa posições do cabeçalho e cobre formatos inglês/português/espanhol nos testes. Saídas não reconhecidas retornam aviso e estado parcial, sem inventar ID ou origem.
+- O serviço captura saída, erro, código de saída, cancelamento e tempo limite. O texto integral do processo não é persistido em logs.

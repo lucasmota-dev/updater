@@ -1,6 +1,6 @@
 # Etapa 7 — Agendamento automático
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Opus 5.5, esforço alto por envolver identidade e execução em segundo plano.
 
 ## Objetivo
@@ -32,4 +32,23 @@ Permitir agendamentos periódicos sem manter um serviço Windows próprio em exe
 
 ## Resultado da execução
 
-Registrar API/biblioteca escolhida, permissões solicitadas, teste de criar/executar/pausar/remover e limitações do ambiente.
+### Decisão e implementação
+
+- Foi escolhido `schtasks.exe`, ferramenta nativa documentada pela Microsoft, em vez de adicionar biblioteca NuGet ou interop COM.
+- A tarefa usa o nome fixo `\\Atualizador.Windows.AutoUpdate.v1`, ação fixa do executável atual com `--scheduled`, `/IT` e `/RL LIMITED`.
+- A configuração é salva em `%LOCALAPPDATA%\\Atualizador.Windows\\schedule.json`.
+- Modos disponíveis: desligado, a cada hora, diário e semanal. O intervalo horário é limitado a 1–168 horas.
+- O escopo é explícito: todos os elegíveis ou pacotes selecionados persistidos.
+- O modo agendado usa um mutex para evitar duas execuções simultâneas.
+
+### Verificações
+
+- `dotnet build Atualizador.Windows.slnx --configuration Release --no-restore`: 0 avisos e 0 erros.
+- `dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build`: 21 testes aprovados, 0 falhas.
+- Testes simulados verificam persistência, nome fixo e argumentos sem comandos arbitrários.
+- Teste real limitado do Windows Task Scheduler: tarefa temporária criada, desativada, reativada e removida com sucesso. A tarefa não foi executada.
+
+### Limitações
+
+- A tarefa roda na conta e no contexto de sessão do usuário atual. WinGet e Microsoft Store podem não funcionar com sessão desconectada, sem acordos aceitos ou quando um instalador exige interação/UAC.
+- O aplicativo não cria serviço Windows e não promete execução universal em segundo plano.

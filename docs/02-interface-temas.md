@@ -1,6 +1,6 @@
 # Etapa 2 — Interface e temas
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Sonnet 5.5, esforço médio; Opus 5.5/alto para decisões visuais complexas.
 
 ## Objetivo
@@ -38,4 +38,31 @@ Build; teste manual com cada tema; testar cor clara, escura e personalizada; red
 
 ## Resultado da execução
 
-Preencher com os arquivos, verificações reais e decisões de design. Atualizar `docs/00-plano-geral.md`.
+### Arquivos alterados
+
+- `src/Atualizador.Windows/App.xaml` e `src/Atualizador.Windows/App.xaml.cs`.
+- `src/Atualizador.Windows/Views/MainWindow.xaml` e `src/Atualizador.Windows/Views/MainWindow.xaml.cs`.
+- `src/Atualizador.Windows/ViewModels/ViewModelBase.cs`, `DelegateCommand.cs` e `PageViewModels.cs`.
+- `src/Atualizador.Windows/Models/AppearanceMode.cs`, `AccentOption.cs` e `AppearancePreferences.cs`.
+- `src/Atualizador.Windows/Services/AppearanceService.cs` e `AppearancePreferencesStore.cs`.
+- `src/Atualizador.Windows/Resources/Accent.xaml`, `Controls.xaml`, `Theme.Light.xaml` e `Theme.Dark.xaml`.
+- `docs/00-plano-geral.md` e este arquivo.
+
+### Decisão de design
+
+Foi usada a infraestrutura nativa de `ResourceDictionary` do WPF com referências `DynamicResource`. A documentação oficial confirma que dicionários trocáveis são o mecanismo adequado para temas. O `ThemeMode`/Fluent nativo não foi usado porque a API ainda é marcada como experimental e o suporte Fluent do .NET 10 continua em evolução. Não foi adicionada biblioteca de terceiros.
+
+### Verificações executadas
+
+- `dotnet build Atualizador.Windows.slnx --configuration Release --no-restore`: concluído com 0 avisos e 0 erros.
+- `dotnet test Atualizador.Windows.slnx --configuration Release --no-restore`: concluído com código 0; a solução ainda não possui projeto de testes.
+- `problems` nos arquivos XAML, projeto, serviço de aparência e ViewModels: nenhum erro encontrado.
+- Execução do `Atualizador.Windows.exe` no Windows: janela iniciada e mantida ativa durante as verificações.
+- Automação nativa da interface: navegação até `Configurações`, seleção dos modos `Sistema`, `Claro` e `Escuro`, rejeição de `#GGGGGG`, aplicação de `#123456`, restauração padrão e persistência entre duas execuções.
+- `git diff --check`: concluído sem erros.
+
+### Limitações conhecidas
+
+- O modo `Sistema` consulta a preferência de aplicativos do Windows quando a aparência é aplicada. Uma alteração externa do tema enquanto o aplicativo está aberto será refletida na próxima aplicação do modo `Sistema`; não foi adicionada escuta global para evitar dependências extras nesta etapa.
+- A barra de título permanece sob o controle padrão do WPF/Windows. A API experimental `ThemeMode` não foi usada.
+- As páginas `Atualizações` e `Histórico` são apenas estados provisórios; nenhuma integração funcional das próximas etapas foi antecipada.

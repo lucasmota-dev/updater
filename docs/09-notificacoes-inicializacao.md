@@ -1,6 +1,6 @@
 # Etapa 9 — Notificações e inicialização
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Sonnet 5.5, esforço médio.
 
 ## Objetivo
@@ -26,4 +26,20 @@ Adicionar notificações discretas e, se solicitado pelo usuário, iniciar o apl
 
 ## Resultado da execução
 
-Registrar o mecanismo escolhido e testes de ativar/desativar.
+### Decisões
+
+- As notificações são banners internos não bloqueantes. Não exigem permissões, não interrompem processos e podem ser fechadas pelo usuário.
+- A inicialização é desligada por padrão e usa a tarefa visível `\\Atualizador.Windows.Startup.v1` do Agendador de Tarefas.
+- A opção é persistida em `%LOCALAPPDATA%\\Atualizador.Windows\\startup.json` e pode ser revertida pela própria tela de configurações.
+- Não foi usado Registro, serviço Windows ou tarefa oculta.
+
+### Verificações
+
+- `dotnet build Atualizador.Windows.slnx --configuration Release --no-restore`: 0 avisos e 0 erros.
+- `dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build`: 21 testes aprovados, 0 falhas.
+- O banner interno é publicado para descoberta, erro e conclusão de atualização.
+- O comando de inicialização é fixo e usa a conta atual; a criação real da tarefa de inicialização permanece limitada às mesmas restrições documentadas do Agendador da etapa 7.
+
+### Limitações
+
+- Notificações nativas do sistema não foram usadas porque uma publicação WPF não empacotada exige identidade/ativação adicional; o banner interno mantém o comportamento sem permissões extras.

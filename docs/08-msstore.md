@@ -1,6 +1,6 @@
 # Etapa 8 — Microsoft Store
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Opus 5.5, esforço alto para verificar cobertura e limites; Sonnet 5.5/medio para implementação.
 
 ## Objetivo
@@ -28,4 +28,16 @@ Integrar a fonte `msstore` do WinGet quando suportada e informar os casos em que
 
 ## Resultado da execução
 
-Registrar a versão do WinGet, comportamento da fonte e limitações observadas.
+### Resultado observado
+
+- WinGet testado: `v1.29.380`.
+- `winget source list --disable-interactivity` confirmou `msstore` configurada, junto com `winget` e `winget-font`.
+- A origem é mantida no modelo e na chave de deduplicação `ID + origem`; o mesmo ID em `winget` e `msstore` não é colapsado indevidamente.
+- A interface mostra a origem e oferece `Abrir Microsoft Store` quando há pacote `msstore` na lista.
+- A URI usada é `ms-windows-store://downloadsandupdates`, documentada pela Microsoft como a página de downloads e atualizações.
+- Nenhuma fonte foi alterada e a Store não foi aberta durante os testes automatizados.
+
+### Limitações
+
+- A fonte `msstore` não garante que todos os aplicativos instalados pela Store sejam detectáveis ou atualizáveis pelo WinGet.
+- Falhas da Store não impedem o processamento independente de pacotes da origem `winget`.

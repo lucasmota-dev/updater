@@ -72,3 +72,65 @@ Essas recomendações refletem os modelos anunciados pela Anthropic até 24/10/2
 - Publicação de arquivo único: https://learn.microsoft.com/pt-br/dotnet/core/deploying/single-file/overview
 - Claude Code Skills: https://docs.anthropic.com/en/docs/claude-code/skills
 - Agentes no Claude Code: https://docs.anthropic.com/en/docs/claude-code/sub-agents
+
+## Estado atual do aplicativo
+
+As etapas 01 a 12 foram implementadas e verificadas no Windows. A solução está em `Atualizador.Windows.slnx`, o projeto WPF está em `src/Atualizador.Windows` e os testes estão em `tests/Atualizador.Windows.Tests`.
+
+O aplicativo oferece:
+
+- interface WPF em português brasileiro, com temas Sistema, Claro e Escuro;
+- cor de destaque predefinida ou hexadecimal personalizada;
+- descoberta de atualizações com WinGet, sem alterar fontes automaticamente;
+- seleção, filtro por origem, progresso, cancelamento e confirmação antes da atualização;
+- histórico JSON local em `%LOCALAPPDATA%\\Atualizador.Windows`;
+- agendamento e inicialização opcional por tarefas fixas e removíveis do Agendador de Tarefas;
+- abertura da página de atualizações da Microsoft Store para itens da origem `msstore`.
+
+## Requisitos
+
+- Windows 10 ou Windows 11 x64.
+- WinGet/App Installer para descoberta e atualização de aplicativos.
+- Sessão de usuário compatível com WinGet e Microsoft Store para operações que exigem interação ou acordos.
+
+O aplicativo não incorpora o WinGet e não exige privilégios administrativos para abrir.
+
+## Executar no desenvolvimento
+
+```powershell
+dotnet run --project src/Atualizador.Windows/Atualizador.Windows.csproj
+```
+
+Executar os testes sem atualizar aplicativos reais:
+
+```powershell
+dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release
+```
+
+## Publicar
+
+Publicação autocontida para Windows x64:
+
+```powershell
+dotnet restore src/Atualizador.Windows/Atualizador.Windows.csproj --runtime win-x64
+dotnet publish src/Atualizador.Windows/Atualizador.Windows.csproj --configuration Release --no-restore --output artifacts/publish/win-x64 -p:PublishProfile=WinX64
+```
+
+O pacote ZIP gerado em `artifacts/Atualizador.Windows-0.1.0-win-x64.zip` contém o executável autocontido. A publicação não é assinada nesta versão.
+
+## Instalação e remoção
+
+1. Extraia o ZIP em uma pasta escolhida pelo usuário.
+2. Execute `Atualizador.Windows.exe`.
+3. Configure o agendamento e a inicialização somente se desejar.
+4. Para remover, desative/remova o agendamento e a inicialização na tela **Configurações**.
+5. Feche o aplicativo e remova a pasta extraída. As preferências e o histórico ficam em `%LOCALAPPDATA%\\Atualizador.Windows` e podem ser removidos separadamente.
+
+## Limitações confirmadas
+
+- A saída do WinGet é uma tabela de texto; o parser cobre formatos testados em inglês, português e espanhol, mas pode exigir evolução para novos formatos.
+- `msstore` não representa todos os aplicativos instalados pela Microsoft Store.
+- Instaladores podem exigir UAC, interface própria ou reinicialização; cancelar o WinGet não garante rollback.
+- Agendamentos dependem da conta atual, da sessão compatível e das limitações do WinGet/Store quando o usuário está desconectado.
+- A barra de progresso representa pacotes processados; durante o instalador individual ela é indeterminada.
+- O pacote atual usa o ícone padrão do WPF e não inclui assinatura de código.

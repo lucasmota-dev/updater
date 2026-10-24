@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Atualizador.Windows/Atualizador.Windows.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj" />
+  </Folder>
+</Solution>

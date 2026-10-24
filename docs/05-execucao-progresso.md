@@ -1,6 +1,6 @@
 # Etapa 5 — Atualização, progresso e cancelamento
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Opus 5.5, esforço alto para definir o fluxo seguro; Sonnet 5.5/medio para implementação após aprovação do desenho.
 
 ## Objetivo
@@ -40,4 +40,26 @@ Atualizar somente os pacotes selecionados e apresentar progresso, resultado e fa
 
 ## Resultado da execução
 
-Registrar comandos confirmados, códigos de saída observados e testes reais/simulados claramente separados.
+### Arquivos alterados
+
+- `src/Atualizador.Windows/Models/PackageUpdateStatus.cs`.
+- `src/Atualizador.Windows/Services/WingetService.cs` e `UserConfirmation.cs`.
+- `src/Atualizador.Windows/ViewModels/UpdatesPageViewModel.cs` e `PageViewModels.cs`.
+- `src/Atualizador.Windows/Views/MainWindow.xaml` e `MainWindow.xaml.cs`.
+- `tests/Atualizador.Windows.Tests/WingetTests.cs`.
+- `docs/00-plano-geral.md` e este arquivo.
+
+### Decisões de segurança
+
+- A atualização usa `ProcessStartInfo.UseShellExecute = false` e `ArgumentList`.
+- Cada pacote usa `upgrade --id <id> --exact --source <origem> --silent --disable-interactivity`, com aceitação explícita dos acordos documentados.
+- A aplicação nunca usa `--all` para seleção parcial e não inclui `--include-unknown` por padrão.
+- Pacotes são processados sequencialmente. Uma instância impede uma segunda operação enquanto a primeira está ativa.
+- Cancelamento encerra o processo filho quando possível e informa que o instalador externo pode não reverter alterações.
+
+### Verificações
+
+- `dotnet build Atualizador.Windows.slnx --configuration Release --no-restore`: 0 avisos e 0 erros.
+- `dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build`: 12 testes aprovados, 0 falhas.
+- Testes simulados cobrem argumentos, ID/origem inválidos, sucesso, falha, código de saída e cancelamento sem iniciar WinGet real.
+- Nenhuma atualização real foi executada. O primeiro teste manual real permanece pendente de autorização explícita.

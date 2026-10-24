@@ -1,6 +1,6 @@
 # Etapa 12 — Revisão final e entrega
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Opus 5.5, esforço alto.
 
 ## Objetivo
@@ -32,4 +32,30 @@ Revisar qualidade, requisitos, documentação e pacote de distribuição antes d
 
 ## Resultado da execução
 
-Preencher somente após concluir a revisão real. Esta etapa não pode ser marcada como concluída antecipadamente.
+### Revisão final executada
+
+- Todas as etapas 01–12 estão marcadas com estado real no plano geral.
+- `dotnet build Atualizador.Windows.slnx --configuration Release --no-restore`: 0 avisos e 0 erros.
+- `dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build`: 21 testes aprovados, 0 falhas.
+- `problems` nos arquivos principais: nenhum erro encontrado.
+- `git diff --check`: concluído com sucesso.
+- Nenhum arquivo de código excede 1.000 linhas.
+- O executável WPF Release e o executável publicado `win-x64` abriram no Windows.
+- O modo `--scheduled` sem agendamento retornou código 0; argumentos extras foram rejeitados com código 2.
+- A publicação autocontida foi regenerada em `artifacts/publish/win-x64/Atualizador.Windows.exe` e empacotada em `artifacts/Atualizador.Windows-0.1.0-win-x64.zip`.
+
+### Revisão de segurança e escopo
+
+- Nenhuma atualização real de aplicativo foi executada durante testes.
+- Nenhuma fonte do WinGet foi alterada.
+- Nenhum serviço Windows foi criado.
+- A tarefa temporária do Agendador usada na verificação foi removida.
+- Não há chamadas `cmd.exe /c`, PowerShell de comando ou argumentos livres na aplicação.
+- IDs e origens são validados antes de atualização; `ArgumentList` é usado na execução de processos.
+- Limitações de WinGet, Microsoft Store, UAC, sessão desconectada, instaladores interativos, assinatura e VM limpa estão documentadas no `README.md` e nas etapas.
+
+### Pendências conhecidas
+
+- A publicação ainda não possui assinatura de código nem ícone personalizado.
+- A publicação não foi instalada em VM limpa neste ambiente.
+- Um teste manual de atualização real continua condicionado à autorização explícita do usuário.

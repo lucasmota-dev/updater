@@ -1,6 +1,6 @@
 # Etapa 4 — Lista e seleção de aplicativos
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Sonnet 5.5, esforço médio.
 
 ## Objetivo
@@ -30,4 +30,23 @@ Exibir as atualizações descobertas e permitir que o usuário escolha exatament
 
 ## Resultado da execução
 
-Registrar teste manual da lista, navegação por teclado e resultados do build.
+### Arquivos alterados
+
+- `src/Atualizador.Windows/Models/PackageSourceFilter.cs`.
+- `src/Atualizador.Windows/ViewModels/AsyncDelegateCommand.cs`, `UpdatesPageViewModel.cs` e `PageViewModels.cs`.
+- `src/Atualizador.Windows/Views/MainWindow.xaml` e `src/Atualizador.Windows/Resources/Controls.xaml`.
+- `docs/00-plano-geral.md` e este arquivo.
+
+### Verificações executadas
+
+- `dotnet build Atualizador.Windows.slnx --configuration Release --no-restore`: concluído sem avisos ou erros.
+- `dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build`: 9 testes aprovados.
+- Teste manual no Windows: consulta real exibiu `Microsoft Edge`.
+- Seleção individual atualizou o contador e permaneceu preservada nos filtros `WinGet` e `Microsoft Store`.
+- Estado vazio para filtro sem resultados foi exibido.
+- `Atualizar selecionados` permaneceu desabilitado; nenhum processo de instalação foi iniciado.
+
+### Limitações e escopo
+
+- A execução de atualização ainda não está ligada à interface. A ação permanece desabilitada até a etapa 5.
+- A lista usa virtualização WPF com `ListView` e `Recycling`; ícones locais ainda não foram adicionados porque a descoberta não fornece um ícone confiável nesta etapa.

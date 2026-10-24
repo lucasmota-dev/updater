@@ -1,6 +1,6 @@
 # Etapa 6 — Histórico e registros
 
-**Estado inicial:** PENDENTE  
+**Estado:** CONCLUÍDA
 **Modelo recomendado:** Sonnet 5.5, esforço médio.
 
 ## Objetivo
@@ -28,4 +28,27 @@ Guardar histórico local compreensível das verificações e das atualizações.
 
 ## Resultado da execução
 
-Registrar formato adotado, local de armazenamento e testes de leitura/gravação/recuperação.
+### Arquivos alterados
+
+- `src/Atualizador.Windows/Models/HistoryModels.cs`.
+- `src/Atualizador.Windows/Services/HistoryStore.cs`.
+- `src/Atualizador.Windows/ViewModels/HistoryPageViewModel.cs`, `UpdatesPageViewModel.cs` e `PageViewModels.cs`.
+- `src/Atualizador.Windows/Views/MainWindow.xaml`.
+- `tests/Atualizador.Windows.Tests/HistoryStoreTests.cs`.
+- `docs/00-plano-geral.md` e este arquivo.
+
+### Formato e política
+
+- Arquivo: `%LOCALAPPDATA%\\Atualizador.Windows\\history.json`.
+- Formato JSON versionado, versão `1`.
+- Retenção fixa documentada de no máximo 100 registros, com os mais recentes primeiro.
+- Escrita em arquivo temporário e substituição do destino para reduzir risco de arquivo parcial.
+- stdout e stderr integrais não são persistidos.
+
+### Verificações
+
+- `dotnet build Atualizador.Windows.slnx --configuration Release --no-restore`: 0 avisos e 0 erros.
+- `dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build`: 16 testes aprovados, 0 falhas.
+- Testes de armazenamento cobrem leitura/gravação, corrupção, retenção e limpeza.
+- Descoberta real do WinGet foi persistida e exibida na tela `Histórico`, incluindo o detalhe de `Microsoft Edge`.
+- Limpeza é protegida por confirmação e não foi acionada durante a validação para preservar os registros locais.
