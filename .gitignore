@@ -1,0 +1,22 @@
+# .NET
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs e resultados locais
+*.log
+artifacts/
+TestResults/
+
+# IDEs
+.idea/
+.vscode/
+
+# Segredos e configurações de máquina
+.env
+.env.*
+!.env.example
