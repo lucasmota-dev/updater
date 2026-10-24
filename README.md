@@ -71,6 +71,7 @@ O aplicativo oferece:
 - seleção, filtro por origem, progresso, cancelamento e confirmação antes da atualização;
 - histórico JSON local em `%LOCALAPPDATA%\\Atualizador.Windows`;
 - agendamento e inicialização opcional por tarefas fixas e removíveis do Agendador de Tarefas;
+- ícone local baseado no Material Symbols `system_update` e área de notificação com menu acessível;
 - abertura da página de atualizações da Microsoft Store para itens da origem `msstore`.
 
 ## Requisitos
@@ -104,13 +105,15 @@ dotnet publish src/Atualizador.Windows/Atualizador.Windows.csproj --configuratio
 
 O pacote ZIP gerado em `artifacts/Atualizador.Windows-0.1.0-win-x64.zip` contém o executável autocontido. A publicação não é assinada nesta versão.
 
+O instalador `Atualizador-Setup.exe` é compilado pelo workflow do GitHub Actions com `installer/Atualizador.iss` e instala em `C:\Atualizador` com atalhos e desinstalador.
+
 ## Instalação e remoção
 
-1. Extraia o ZIP em uma pasta escolhida pelo usuário.
-2. Execute `Atualizador.Windows.exe`.
-3. Configure o agendamento e a inicialização somente se desejar.
+1. Execute `Atualizador-Setup.exe` para instalar em `C:\Atualizador`, ou extraia o ZIP portátil em uma pasta escolhida pelo usuário.
+2. O instalador cria atalhos na Área de Trabalho e no Menu Iniciar.
+3. Configure o agendamento, a inicialização e a bandeja somente se desejar.
 4. Para remover, desative/remova o agendamento e a inicialização na tela **Configurações**.
-5. Feche o aplicativo e remova a pasta extraída. As preferências e o histórico ficam em `%LOCALAPPDATA%\\Atualizador.Windows` e podem ser removidos separadamente.
+5. Use o desinstalador do Inno Setup ou remova a pasta portátil. As preferências e o histórico ficam em `%LOCALAPPDATA%\\Atualizador.Windows` e não devem ser removidos automaticamente.
 
 ## Limitações confirmadas
 
@@ -119,4 +122,6 @@ O pacote ZIP gerado em `artifacts/Atualizador.Windows-0.1.0-win-x64.zip` contém
 - Instaladores podem exigir UAC, interface própria ou reinicialização; cancelar o WinGet não garante rollback.
 - Agendamentos dependem da conta atual, da sessão compatível e das limitações do WinGet/Store quando o usuário está desconectado.
 - A barra de progresso representa pacotes processados; durante o instalador individual ela é indeterminada.
-- O pacote atual usa o ícone padrão do WPF e não inclui assinatura de código.
+- A publicação não inclui assinatura de código.
+- O compilador Inno Setup não estava disponível localmente; a compilação do instalador foi preparada no workflow e não foi validada neste checkout.
+- Não execute `Atualizador.Windows.exe --scheduled` em um ambiente com agendamento ativo durante testes: esse modo pode iniciar atualizações reais. Use uma configuração desligada ou um ambiente isolado.

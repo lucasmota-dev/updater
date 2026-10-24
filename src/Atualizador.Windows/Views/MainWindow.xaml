@@ -6,6 +6,7 @@
         xmlns:vm="clr-namespace:Atualizador.Windows.ViewModels"
         mc:Ignorable="d"
         Title="Atualizador Windows"
+        Icon="/Atualizador.Windows;component/Assets/Atualizador.ico"
         Width="1080"
         Height="700"
         MinWidth="820"
@@ -62,6 +63,7 @@
                         <ProgressBar Margin="0,10,0,0" Height="5" Minimum="0" Maximum="100"
                                      Value="{Binding UpdateProgress, Mode=OneWay}"
                                      IsIndeterminate="{Binding IsUpdating, Mode=OneWay}"
+                                     Style="{DynamicResource ProgressBarStyle}"
                                      Foreground="{DynamicResource AccentBrush}" />
                     </StackPanel>
                 </Border>
@@ -158,6 +160,7 @@
                                             <ColumnDefinition Width="1.1*" />
                                         </Grid.ColumnDefinitions>
                                         <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  Style="{DynamicResource CheckBoxStyle}"
                                                   VerticalAlignment="Center" AutomationProperties.Name="Selecionar aplicativo" />
                                         <StackPanel Grid.Column="1" Margin="8,0,8,0">
                                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
@@ -350,6 +353,7 @@
                               Style="{DynamicResource SettingsGroupStyle}">
                         <StackPanel>
                             <CheckBox IsChecked="{Binding Startup.IsEnabled, Mode=TwoWay}"
+                                      Style="{DynamicResource CheckBoxStyle}"
                                       Content="Iniciar o aplicativo com o Windows"
                                       AutomationProperties.Name="Iniciar com o Windows" />
                             <TextBlock Margin="0,8,0,0"
@@ -362,6 +366,26 @@
                                         Style="{DynamicResource SecondaryButtonStyle}" />
                             </StackPanel>
                             <TextBlock Margin="0,8,0,0" Text="{Binding Startup.StatusMessage}"
+                                       TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox Header="Área de notificação"
+                              Style="{DynamicResource SettingsGroupStyle}">
+                        <StackPanel>
+                            <CheckBox IsChecked="{Binding Tray.MinimizeToTray, Mode=TwoWay}"
+                                      Style="{DynamicResource CheckBoxStyle}"
+                                      Content="Minimizar para a bandeja ao fechar"
+                                      AutomationProperties.Name="Minimizar para a bandeja ao fechar" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Text="O menu da bandeja permite abrir, verificar atualizações, consultar o status e sair."
+                                       TextWrapping="Wrap"
+                                       Style="{DynamicResource CaptionTextStyle}" />
+                            <Button Margin="0,14,0,0" HorizontalAlignment="Left"
+                                    Content="Aplicar bandeja"
+                                    Command="{Binding Tray.ApplyCommand}"
+                                    Style="{DynamicResource SecondaryButtonStyle}" />
+                            <TextBlock Margin="0,8,0,0" Text="{Binding Tray.StatusMessage}"
                                        TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
                         </StackPanel>
                     </GroupBox>

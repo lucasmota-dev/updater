@@ -26,12 +26,14 @@ public sealed class SettingsPageViewModel : PageViewModel
     public SettingsPageViewModel(
         AppearanceService appearanceService,
         ScheduleSettingsViewModel schedule,
-        StartupSettingsViewModel startup)
+        StartupSettingsViewModel startup,
+        TraySettingsViewModel tray)
         : base("Configurações", "Escolha a aparência e a cor de destaque do aplicativo.", "⚙")
     {
         Appearance = new AppearanceSettingsViewModel(appearanceService);
         Schedule = schedule;
         Startup = startup;
+        Tray = tray;
     }
 
     public AppearanceSettingsViewModel Appearance { get; }
@@ -39,6 +41,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     public ScheduleSettingsViewModel Schedule { get; }
 
     public StartupSettingsViewModel Startup { get; }
+
+    public TraySettingsViewModel Tray { get; }
 }
 
 public sealed class AppearanceSettingsViewModel : ViewModelBase
@@ -153,6 +157,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private PageViewModel _selectedPage;
     private readonly UpdatesPageViewModel _updatesPage;
     private readonly NotificationService _notificationService;
+    private readonly TraySettingsViewModel _traySettings;
 
     public MainWindowViewModel()
     {
@@ -167,11 +172,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             new TaskSchedulerService(),
             () => _updatesPage.SelectedPackages);
         var startup = new StartupSettingsViewModel(new StartupTaskService(), new StartupPreferencesStore());
+        _traySettings = new TraySettingsViewModel(new TrayPreferencesStore());
         Pages =
         [
             _updatesPage,
             new HistoryPageViewModel(historyStore),
-            new SettingsPageViewModel(appearanceService, schedule, startup)
+            new SettingsPageViewModel(appearanceService, schedule, startup, _traySettings)
         ];
         _selectedPage = Pages[0];
     }
@@ -185,6 +191,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     public NotificationService Notifications => _notificationService;
+
+    public UpdatesPageViewModel UpdatesPage => _updatesPage;
+
+    public TraySettingsViewModel TraySettings => _traySettings;
 
     public DelegateCommand DismissNotificationCommand { get; }
 

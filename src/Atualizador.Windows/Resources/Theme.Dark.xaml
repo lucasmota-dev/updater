@@ -2,6 +2,10 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#202020" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="#2B2B2B" />
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#383838" />
+    <SolidColorBrush x:Key="SurfacePressedBrush" Color="#444444" />
+    <SolidColorBrush x:Key="DisabledControlBrush" Color="#333333" />
+    <SolidColorBrush x:Key="ProgressTrackBrush" Color="#454545" />
     <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F5F5F5" />
     <SolidColorBrush x:Key="SecondaryTextBrush" Color="#C7C7C7" />
     <SolidColorBrush x:Key="BorderBrush" Color="#454545" />
