@@ -1,0 +1,31 @@
+# Arquivos do pacote
+
+- `.claude/agents/architect.md`
+- `.claude/agents/code-reviewer.md`
+- `.claude/agents/test-runner.md`
+- `.claude/agents/winget-specialist.md`
+- `.claude/agents/wpf-ui-designer.md`
+- `.claude/skills/README.md`
+- `.claude/skills/pt-br-linguagem-tecnica-controlada/SKILL.md`
+- `.claude/skills/stepwise-development/SKILL.md`
+- `.claude/skills/thermo-nuclear-code-generation/SKILL.md`
+- `.claude/skills/thermo-nuclear-code-quality-review/SKILL.md`
+- `.claude/skills/windows-11-wpf-design/SKILL.md`
+- `.claude/skills/winget-safe-execution/SKILL.md`
+- `.claude/skills/wpf-development/SKILL.md`
+- `.gitignore`
+- `CLAUDE.md`
+- `README.md`
+- `docs/00-plano-geral.md`
+- `docs/01-base-projeto.md`
+- `docs/02-interface-temas.md`
+- `docs/03-descoberta-updates.md`
+- `docs/04-selecao-atualizacao.md`
+- `docs/05-execucao-progresso.md`
+- `docs/06-historico-logs.md`
+- `docs/07-agendamento.md`
+- `docs/08-msstore.md`
+- `docs/09-notificacoes-inicializacao.md`
+- `docs/10-publicacao-instalacao.md`
+- `docs/11-testes-seguranca.md`
+- `docs/12-revisao-final.md`
