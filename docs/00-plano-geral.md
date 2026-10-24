@@ -57,6 +57,15 @@ Registrar aqui decisões que exigem pesquisa ou validação. Não presumir que u
 - API/biblioteca para Agendador de Tarefas: comparar durante a etapa 7, priorizando a solução simples e segura.
 - Alcance real da fonte `msstore`: validar na etapa 8 sem prometer cobertura total.
 
+## Melhorias futuras planejadas
+
+Os itens abaixo foram solicitados e já têm implementação parcial no checkout; as validações externas indicadas permanecem pendentes:
+
+- Bandeja do Windows: implementada; falta validação manual completa da interação em sessão interativa.
+- Instalador Inno Setup: script implementado; falta compilar e testar o instalador em ambiente com Inno Setup.
+- Ícone Material Symbols: SVG, licença e `.ico` 16/32/48/256 implementados.
+- Publicação contínua no GitHub: workflow implementado; falta executar no repositório remoto e confirmar a release/tag contínua.
+
 ## Registro de alterações
 
 - Inicial: pacote de instruções e skills criado. Nenhuma aplicação WPF foi implementada nesta entrega.
@@ -72,3 +81,4 @@ Registrar aqui decisões que exigem pesquisa ou validação. Não presumir que u
 - Etapa 10: publicação autocontida `win-x64` em arquivo único, ZIP repetível e validação de abertura; WinGet continua sendo requisito externo.
 - Etapa 11: conjunto de 21 testes automatizados aprovado, revisão de chamadas de processo/argumentos/caminhos e validações reais sem executar atualização de software.
 - Etapa 12: revisão final concluída; todas as etapas estão documentadas, build/testes/publicação foram repetidos e as limitações conhecidas foram registradas.
+- Melhorias posteriores: bandeja, ícone Material Symbols, script Inno Setup e workflow de release contínuo adicionados; compilação do instalador e execução do workflow remoto permanecem pendentes de ambiente externo.

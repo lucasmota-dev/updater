@@ -1,19 +1,35 @@
 using System.Windows;
+using Atualizador.Windows.Services;
 using Atualizador.Windows.ViewModels;
 
 namespace Atualizador.Windows.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IDisposable
 {
+    private readonly TrayIconService _trayIconService;
+
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = new MainWindowViewModel();
+        var viewModel = new MainWindowViewModel();
+        DataContext = viewModel;
+        _trayIconService = new TrayIconService(
+            this,
+            viewModel.UpdatesPage,
+            viewModel.Notifications,
+            () => viewModel.TraySettings.MinimizeToTray);
     }
 
     protected override void OnClosed(EventArgs e)
     {
-        (DataContext as IDisposable)?.Dispose();
+        Dispose();
         base.OnClosed(e);
+    }
+
+    public void Dispose()
+    {
+        (DataContext as IDisposable)?.Dispose();
+        _trayIconService.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

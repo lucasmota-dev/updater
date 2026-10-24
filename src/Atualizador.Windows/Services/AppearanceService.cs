@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Media;
 using Microsoft.Win32;
 using Atualizador.Windows.Models;
+using Color = System.Windows.Media.Color;
 
 namespace Atualizador.Windows.Services;
 
@@ -93,7 +94,7 @@ public sealed class AppearanceService
     private static void ApplyTheme(AppearanceMode mode)
     {
         var source = ResolveThemeSource(mode);
-        var dictionaries = Application.Current.Resources.MergedDictionaries;
+        var dictionaries = System.Windows.Application.Current.Resources.MergedDictionaries;
         var index = FindThemeDictionaryIndex(dictionaries);
         var dictionary = new ResourceDictionary { Source = new Uri(source, UriKind.Relative) };
 
@@ -114,7 +115,7 @@ public sealed class AppearanceService
             accent = Color.FromRgb(0, 103, 192);
         }
 
-        var resources = Application.Current.Resources;
+        var resources = System.Windows.Application.Current.Resources;
         resources["AccentColor"] = accent;
         resources["AccentBrush"] = CreateBrush(accent);
         resources["AccentBrushHover"] = CreateBrush(AdjustBrightness(accent, 0.86));

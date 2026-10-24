@@ -49,3 +49,43 @@ Entregar uma publicação autocontida para Windows e documentação clara de ins
 - O binário usa o ícone padrão do WPF nesta versão; não há logotipo personalizado.
 - A assinatura de código não foi aplicada porque não existe certificado fornecido.
 - O WinGet deve estar instalado no computador de destino para descoberta e atualização.
+
+## Melhorias executadas — instalador, ícone e publicação contínua
+
+**Estado:** EM ANDAMENTO
+
+### Instalador Inno Setup
+
+- Gerar `Atualizador-Setup.exe` para Windows x64 com Inno Setup.
+- Instalar em `C:\Atualizador`.
+- Instalar o executável portátil e `README.txt`.
+- Criar atalhos na Área de Trabalho e no Menu Iniciar.
+- Incluir desinstalador e remover atalhos/arquivos instalados sem remover dados do usuário em `%LOCALAPPDATA%`.
+- Solicitar privilégios somente quando a instalação escolhida exigir; avaliar `PrivilegesRequired=lowest` e documentar a decisão.
+
+### Ícone
+
+- Obter um símbolo de atualização do sistema na fonte oficial Google Material Symbols.
+- Manter SVG de origem e atribuição/licença Apache 2.0.
+- Converter para `.ico` com 16, 32, 48 e 256 px.
+- Aplicar o ícone ao executável, janela, atalhos e instalador.
+
+### GitHub Actions
+
+- Criar posteriormente `.github/workflows/release-continuous.yml` com `push` em `main` e `workflow_dispatch`.
+- Usar `windows-latest`, restaurar, compilar, executar testes e somente depois gerar `Atualizador.exe` e `Atualizador-Setup.exe`.
+- Usar `permissions: contents: write` e manter as demais permissões como `none`.
+- Usar `concurrency` com `cancel-in-progress: true` para impedir que uma publicação antiga substitua uma mais nova.
+- Manter uma release contínua com tag fixa, por exemplo `continuous`. Antes de publicar, atualizar/verificar a referência da tag para `GITHUB_SHA`; depois usar `gh release edit --target GITHUB_SHA` e conferir a referência via API do GitHub.
+- Substituir os ativos com `gh release upload ... --clobber`, conferir nomes, tamanhos e SHA do commit, e falhar se a referência da tag não coincidir com `GITHUB_SHA`.
+- Não assumir que substituir ativos atualiza a referência Git: a verificação explícita da tag é obrigatória.
+
+Referências consultadas: [workflow syntax e permissões](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax), [gatilhos de workflow](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow), [concorrência](https://docs.github.com/en/actions/concepts/workflows-and-actions/concurrency), [`gh release edit`](https://cli.github.com/manual/gh_release_edit) e [`gh release upload --clobber`](https://cli.github.com/manual/gh_release_upload).
+
+Referências de distribuição: [guia oficial Material Symbols](https://developers.google.com/fonts/docs/material_symbols?hl=pt-br), [Inno Setup](https://jrsoftware.org/isinfo.php), [`PrivilegesRequired`](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm) e seção [`Icons`](https://jrsoftware.org/ishelp/topic_iconssection.htm).
+
+Implementado neste checkout: SVG oficial, licença, `.ico`, `installer/Atualizador.iss` e `.github/workflows/release-continuous.yml`. Pendente de validação externa: compilação real do Inno Setup e execução do workflow no GitHub.
+
+O executável portátil foi recompilado com o ícone local e o aplicativo Release iniciou no Windows. A compilação do instalador não foi declarada como concluída porque `ISCC.exe` não está disponível neste ambiente.
+
+Nota de segurança da validação: o modo publicado `--scheduled` foi executado enquanto havia uma configuração de agendamento local ativa. Isso tentou atualizar o Edge, o WinGet retornou falha e a versão instalada permaneceu inalterada. Não executar esse modo durante testes sem garantir que o agendamento local esteja desligado.

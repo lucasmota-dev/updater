@@ -1,0 +1,94 @@
+name: Release contínuo
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-continuous
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurar dependências
+        shell: pwsh
+        run: dotnet restore Atualizador.Windows.slnx
+
+      - name: Compilar
+        shell: pwsh
+        run: dotnet build Atualizador.Windows.slnx --configuration Release --no-restore
+
+      - name: Executar testes
+        shell: pwsh
+        run: dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build
+
+      - name: Publicar executável portátil
+        shell: pwsh
+        run: |
+          dotnet restore src/Atualizador.Windows/Atualizador.Windows.csproj --runtime win-x64
+          dotnet publish src/Atualizador.Windows/Atualizador.Windows.csproj --configuration Release --no-restore --output artifacts/publish/win-x64 -p:PublishProfile=WinX64
+          New-Item -ItemType Directory -Force artifacts/release | Out-Null
+          Copy-Item artifacts/publish/win-x64/Atualizador.Windows.exe artifacts/release/Atualizador.exe -Force
+
+      - name: Instalar Inno Setup no runner
+        shell: pwsh
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'innosetup-7.1.0-x64.exe'
+          Invoke-WebRequest -Uri 'https://files.jrsoftware.org/is/7/innosetup-7.1.0-x64.exe' -OutFile $installer
+          $signature = Get-AuthenticodeSignature -FilePath $installer
+          if ($signature.Status -ne 'Valid') { throw "Assinatura do Inno Setup inválida: $($signature.Status)" }
+          Start-Process -FilePath $installer -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -NoNewWindow
+
+      - name: Compilar instalador
+        shell: pwsh
+        run: |
+          $iscc = @(
+            'C:\Program Files\Inno Setup 7\ISCC.exe',
+            'C:\Program Files (x86)\Inno Setup 7\ISCC.exe',
+            'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw 'ISCC.exe não foi localizado.' }
+          & $iscc installer/Atualizador.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC.exe falhou com código $LASTEXITCODE" }
+          Copy-Item artifacts/Atualizador-Setup.exe artifacts/release/Atualizador-Setup.exe -Force
+
+      - name: Atualizar tag contínua e release
+        shell: pwsh
+        run: |
+          $repo = $env:GITHUB_REPOSITORY
+          $tag = 'continuous'
+          $sha = $env:GITHUB_SHA
+          $ref = gh api "repos/$repo/git/ref/tags/$tag" --jq '.object.sha' 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh api --method PATCH "repos/$repo/git/refs/tags/$tag" -f sha=$sha -F force=true | Out-Null
+          } else {
+            gh api --method POST "repos/$repo/git/refs" -f ref="refs/tags/$tag" -f sha=$sha | Out-Null
+          }
+          gh release view $tag --repo $repo 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo $repo --target $sha --title 'Atualizador Windows (contínuo)' --notes "Build do commit $sha" --prerelease --latest=false
+          } else {
+            gh release edit $tag --repo $repo --target $sha --title 'Atualizador Windows (contínuo)' --notes "Build do commit $sha" --prerelease --latest=false
+          }
+          gh release upload $tag artifacts/release/Atualizador.exe artifacts/release/Atualizador-Setup.exe --repo $repo --clobber
+          $verifiedSha = gh api "repos/$repo/git/ref/tags/$tag" --jq '.object.sha'
+          if ($verifiedSha -ne $sha) { throw "A tag $tag aponta para $verifiedSha, esperado $sha." }
+          gh release view $tag --repo $repo --json tagName,isPrerelease,assets

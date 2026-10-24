@@ -10,7 +10,7 @@ public interface IUserConfirmation
 public sealed class MessageBoxUserConfirmation : IUserConfirmation
 {
     public bool Confirm(string title, string message) =>
-        MessageBox.Show(
+        System.Windows.MessageBox.Show(
             message,
             title,
             MessageBoxButton.YesNo,

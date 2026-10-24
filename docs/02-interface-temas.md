@@ -38,6 +38,13 @@ Build; teste manual com cada tema; testar cor clara, escura e personalizada; red
 
 ## Resultado da execução
 
+### Correção posterior dos temas
+
+- Os estados normal, hover, pressionado, desabilitado e foco dos botões agora usam recursos compartilhados por tema.
+- ComboBox, CheckBox, TextBox, ListView e ProgressBar também usam tokens dinâmicos de fundo, texto, borda, seleção, foco e destaque.
+- Não há cores hexadecimais fixas nos controles da interface; a cor de destaque escolhida continua sendo aplicada por `DynamicResource`.
+- Verificação manual final: troca Sistema/Claro/Escuro na mesma execução, aplicação de cor personalizada e restauração padrão concluídas sem perder os controles de Configurações.
+
 ### Arquivos alterados
 
 - `src/Atualizador.Windows/App.xaml` e `src/Atualizador.Windows/App.xaml.cs`.

@@ -59,3 +59,9 @@ Revisar qualidade, requisitos, documentação e pacote de distribuição antes d
 - A publicação ainda não possui assinatura de código nem ícone personalizado.
 - A publicação não foi instalada em VM limpa neste ambiente.
 - Um teste manual de atualização real continua condicionado à autorização explícita do usuário.
+
+### Ocorrência durante esta melhoria
+
+- O executável publicado foi iniciado com `--scheduled` para validar o modo silencioso, mas o ambiente já possuía `schedule.json` ativo (`Diario`, escopo `TodosElegiveis`). Isso disparou uma tentativa real de atualização do Edge.
+- O WinGet retornou falha; a verificação read-only seguinte confirmou Edge em `155.0.4283.45`, ainda com atualização disponível `156.0.4314.42`.
+- Nenhuma nova execução agendada será disparada nesta tarefa. A ocorrência deve ser considerada uma limitação da validação, não um teste automatizado aprovado de atualização real.
