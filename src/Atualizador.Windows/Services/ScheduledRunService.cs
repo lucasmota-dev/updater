@@ -1,0 +1,88 @@
+using Atualizador.Windows.Models;
+
+namespace Atualizador.Windows.Services;
+
+public sealed class ScheduledRunService
+{
+    private const string MutexName = "Atualizador.Windows.ScheduledUpdate.v1";
+    private readonly ScheduleStore _scheduleStore;
+    private readonly WingetService _wingetService;
+    private readonly HistoryStore _historyStore;
+
+    public ScheduledRunService(
+        ScheduleStore? scheduleStore = null,
+        WingetService? wingetService = null,
+        HistoryStore? historyStore = null)
+    {
+        _scheduleStore = scheduleStore ?? new ScheduleStore();
+        _wingetService = wingetService ?? new WingetService();
+        _historyStore = historyStore ?? new HistoryStore();
+    }
+
+    public async Task<int> RunAsync(CancellationToken cancellationToken = default)
+    {
+        using var mutex = new Mutex(false, MutexName, out var createdNew);
+        if (!createdNew || !mutex.WaitOne(TimeSpan.Zero))
+        {
+            return 2;
+        }
+
+        var preferences = _scheduleStore.Load();
+        if (preferences.Mode == ScheduleMode.Desligado)
+        {
+            return 0;
+        }
+
+        var startedAt = DateTimeOffset.Now;
+        IReadOnlyList<UpdatablePackage> packages;
+        if (preferences.Scope == ScheduleScope.PacotesSelecionados)
+        {
+            packages = preferences.SelectedPackages;
+        }
+        else
+        {
+            var discovery = await _wingetService.DiscoverUpdatesAsync(cancellationToken: cancellationToken);
+            if (discovery.Status is WingetDiscoveryStatus.WinGetUnavailable
+                or WingetDiscoveryStatus.ExecutionFailed
+                or WingetDiscoveryStatus.SourceFailed)
+            {
+                _historyStore.Append(new HistoryEntry(
+                    Guid.NewGuid(),
+                    startedAt,
+                    DateTimeOffset.Now,
+                    HistoryOperation.Descoberta,
+                    "WinGet",
+                    0,
+                    HistoryEntryStatus.Falha,
+                    discovery.Message,
+                    []));
+                return 1;
+            }
+
+            packages = discovery.Packages;
+        }
+        var results = new List<HistoryPackageResult>();
+        foreach (var package in packages)
+        {
+            var result = await _wingetService.UpgradeAsync(package, cancellationToken);
+            results.Add(new(package.Name, package.Id, package.Source, result.Status, result.Message));
+        }
+
+        var status = results.Any(result => result.Status == PackageUpdateStatus.Canceled)
+            ? HistoryEntryStatus.Cancelado
+            : results.Any(result => result.Status == PackageUpdateStatus.Failed)
+                ? HistoryEntryStatus.Falha
+                : results.Count == 0 ? HistoryEntryStatus.SemAtualizacoes : HistoryEntryStatus.Sucesso;
+        _historyStore.Append(new HistoryEntry(
+            Guid.NewGuid(),
+            startedAt,
+            DateTimeOffset.Now,
+            HistoryOperation.Atualizacao,
+            "WinGet",
+            results.Count,
+            status,
+            $"Execução agendada processou {results.Count} pacote(s).",
+            results));
+        return status is HistoryEntryStatus.Falha or HistoryEntryStatus.Cancelado ? 1 : 0;
+    }
+}

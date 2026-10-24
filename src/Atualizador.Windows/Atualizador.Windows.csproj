@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <RootNamespace>Atualizador.Windows</RootNamespace>
+    <AssemblyName>Atualizador.Windows</AssemblyName>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <Product>Atualizador Windows</Product>
+    <Description>Atualizador de aplicativos Windows com WinGet.</Description>
+    <Authors>Atualizador Windows</Authors>
+  </PropertyGroup>
+
+</Project>
