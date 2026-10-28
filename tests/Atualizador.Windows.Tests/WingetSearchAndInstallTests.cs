@@ -32,7 +32,7 @@ public sealed class WingetSearchAndInstallTests
     }
 
     [TestMethod]
-    public void ParseSearchResults_ParsesMultiSourceTableWithStore()
+    public void ParseSearchResults_ParsesMultiSourceTable()
     {
         const string output = """
             Name       Id             Version   Source
@@ -46,7 +46,6 @@ public sealed class WingetSearchAndInstallTests
         Assert.HasCount(2, packages);
         Assert.AreEqual("XPDM1ZW6815MQM", packages[0].Id);
         Assert.AreEqual("msstore", packages[0].Source);
-        Assert.IsTrue(packages[0].IsMicrosoftStore);
         Assert.AreEqual("winget", packages[1].Source);
     }
 

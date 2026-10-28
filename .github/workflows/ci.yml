@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    # Toda segunda-feira, 09:00 UTC: detecta quebras causadas por SDK, runner ou dependências.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurar dependências
+        shell: pwsh
+        run: dotnet restore Atualizador.Windows.slnx
+
+      - name: Compilar
+        shell: pwsh
+        run: dotnet build Atualizador.Windows.slnx --configuration Release --no-restore
+
+      - name: Executar testes
+        shell: pwsh
+        run: dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build
+
+      - name: Testar cálculo de versão
+        shell: pwsh
+        run: |
+          $cases = @(
+            @{ Date = '2026.10.28'; Tags = @();                                          Expected = '2026.10.28.01' },
+            @{ Date = '2026.10.28'; Tags = @('v2026.10.28.01');                          Expected = '2026.10.28.02' },
+            @{ Date = '2026.10.28'; Tags = @('v2026.10.28.01','v2026.10.28.09');         Expected = '2026.10.28.10' },
+            @{ Date = '2026.10.29'; Tags = @('v2026.10.28.05');                          Expected = '2026.10.29.01' }
+          )
+          foreach ($case in $cases) {
+            $actual = & ./tools/Get-NextVersion.ps1 -Date $case.Date -ExistingTags $case.Tags
+            if ($actual -ne $case.Expected) { throw "Esperado $($case.Expected), obtido $actual." }
+          }

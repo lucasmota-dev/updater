@@ -15,7 +15,6 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     private readonly ListCollectionView _filteredPackages;
     private readonly IUserConfirmation _confirmation;
     private readonly NotificationService? _notificationService;
-    private PackageSourceFilter _selectedSourceFilter;
     private bool _isLoading;
     private bool _isError;
     private bool _isUpdating;
@@ -40,23 +39,18 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         _notificationService = notificationService;
         Packages = [];
         _filteredPackages = new ListCollectionView(Packages);
-        _filteredPackages.Filter = IsVisibleForSelectedFilter;
         _filteredPackages.SortDescriptions.Add(new SortDescription(nameof(UpdateItemViewModel.Name), ListSortDirection.Ascending));
         RefreshCommand = new AsyncDelegateCommand(RefreshAsync, () => !IsLoading && !IsUpdating);
         SelectAllCommand = new DelegateCommand(SelectAll, () => HasPackages && !IsLoading && !IsUpdating);
         ClearSelectionCommand = new DelegateCommand(ClearSelection, () => HasSelectedPackages && !IsLoading && !IsUpdating);
         UpdateSelectedCommand = new AsyncDelegateCommand(UpdateSelectedAsync, CanUpdateSelected);
         CancelUpdateCommand = new DelegateCommand(CancelUpdate, () => IsUpdating);
-        OpenStoreCommand = new DelegateCommand(OpenStore, () => Packages.Any(IsMicrosoftStorePackage));
         ExcludeSelectedCommand = new DelegateCommand(ExcludeSelected, CanExcludeSelected);
     }
 
     public ObservableCollection<UpdateItemViewModel> Packages { get; }
 
     public ICollectionView FilteredPackages => _filteredPackages;
-
-    public IReadOnlyList<PackageSourceFilter> AvailableSourceFilters { get; } =
-        Enum.GetValues<PackageSourceFilter>();
 
     public AsyncDelegateCommand RefreshCommand { get; }
 
@@ -68,27 +62,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
 
     public DelegateCommand CancelUpdateCommand { get; }
 
-    public DelegateCommand OpenStoreCommand { get; }
-
     public DelegateCommand ExcludeSelectedCommand { get; }
-
-    public bool HasMicrosoftStoreSource => Packages.Any(IsMicrosoftStorePackage);
-
-    public string StoreMessage { get; private set; } = string.Empty;
-
-    public PackageSourceFilter SelectedSourceFilter
-    {
-        get => _selectedSourceFilter;
-        set
-        {
-            if (SetProperty(ref _selectedSourceFilter, value))
-            {
-                _filteredPackages.Refresh();
-                OnPropertyChanged(nameof(HasPackages));
-                OnPropertyChanged(nameof(EmptyStateMessage));
-            }
-        }
-    }
 
     public bool IsLoading
     {
@@ -185,8 +159,6 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
             };
             _historyStore.Append(CreateDiscoveryHistory(displayResult, startedAt));
             ReplacePackages(displayResult.Packages);
-            OnPropertyChanged(nameof(HasMicrosoftStoreSource));
-            OpenStoreCommand.RaiseCanExecuteChanged();
             IsError = displayResult.Status is WingetDiscoveryStatus.ExecutionFailed
                 or WingetDiscoveryStatus.SourceFailed
                 or WingetDiscoveryStatus.WinGetUnavailable;
@@ -335,7 +307,6 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         OnPropertyChanged(nameof(HasSelectedPackages));
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(EmptyStateMessage));
-        OnPropertyChanged(nameof(HasMicrosoftStoreSource));
         UpdateCommandStates();
     }
 
@@ -357,21 +328,6 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         }
 
         UpdateCommandStates();
-    }
-
-    private bool IsVisibleForSelectedFilter(object item)
-    {
-        if (item is not UpdateItemViewModel package)
-        {
-            return false;
-        }
-
-        return SelectedSourceFilter switch
-        {
-            PackageSourceFilter.WinGet => package.Source.Equals("winget", StringComparison.OrdinalIgnoreCase),
-            PackageSourceFilter.MicrosoftStore => package.Source.Equals("msstore", StringComparison.OrdinalIgnoreCase),
-            _ => true
-        };
     }
 
     private void OnPackagePropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
@@ -396,26 +352,8 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         ClearSelectionCommand.RaiseCanExecuteChanged();
         UpdateSelectedCommand.RaiseCanExecuteChanged();
         CancelUpdateCommand.RaiseCanExecuteChanged();
-        OpenStoreCommand.RaiseCanExecuteChanged();
         ExcludeSelectedCommand.RaiseCanExecuteChanged();
     }
-
-    private void OpenStore()
-    {
-        if (MicrosoftStoreService.TryOpenUpdatesPage(out var errorMessage))
-        {
-            StoreMessage = "A página de atualizações da Microsoft Store foi aberta.";
-        }
-        else
-        {
-            StoreMessage = $"Não foi possível abrir a Microsoft Store: {errorMessage}";
-        }
-
-        OnPropertyChanged(nameof(StoreMessage));
-    }
-
-    private static bool IsMicrosoftStorePackage(UpdateItemViewModel package) =>
-        package.Source.Equals("msstore", StringComparison.OrdinalIgnoreCase);
 
     private bool CanExcludeSelected() => HasSelectedPackages && !IsLoading && !IsUpdating;
 

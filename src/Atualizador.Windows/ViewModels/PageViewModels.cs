@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Atualizador.Windows.Models;
 using Atualizador.Windows.Services;
 
@@ -171,6 +172,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly InstallPageViewModel _installPage;
     private readonly NotificationService _notificationService;
     private readonly TraySettingsViewModel _traySettings;
+    private readonly CancellationTokenSource _updateCheckCancellation = new();
 
     public MainWindowViewModel()
     {
@@ -205,6 +207,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             new SettingsPageViewModel(appearanceService, schedule, startup, _traySettings, excludedSettings)
         ];
         _selectedPage = Pages[0];
+        OpenNotificationLinkCommand = new DelegateCommand(OpenNotificationLink);
+        _ = CheckForAppUpdateAsync(_updateCheckCancellation.Token);
     }
 
     public IReadOnlyList<PageViewModel> Pages { get; }
@@ -225,9 +229,39 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public DelegateCommand DismissNotificationCommand { get; }
 
+    public DelegateCommand OpenNotificationLinkCommand { get; }
+
     public void Dispose()
     {
+        _updateCheckCancellation.Cancel();
+        _updateCheckCancellation.Dispose();
         _updatesPage.Dispose();
         _installPage.Dispose();
+    }
+
+    private async Task CheckForAppUpdateAsync(CancellationToken cancellationToken)
+    {
+        var release = await new UpdateCheckService().CheckAsync(UpdateCheckService.CurrentVersion, cancellationToken);
+        if (release is null || cancellationToken.IsCancellationRequested || _notificationService.HasNotification)
+        {
+            return;
+        }
+
+        _notificationService.Publish(new AppNotification(
+            NotificationKind.Informacao,
+            "Nova versão disponível",
+            $"A versão {UpdateCheckService.Format(release.Version)} do Atualizador foi publicada. "
+            + $"Você usa a {UpdateCheckService.Format(UpdateCheckService.CurrentVersion)}.",
+            "Abrir página da versão",
+            release.PageUrl));
+    }
+
+    private void OpenNotificationLink()
+    {
+        if (_notificationService.Current?.ActionUri is { } uri)
+        {
+            // A URL vem validada (https, github.com) pelo UpdateCheckService; o shell só abre o navegador.
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        }
     }
 }

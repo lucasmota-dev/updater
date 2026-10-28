@@ -1,5 +1,7 @@
 #define AppName "Atualizador Windows"
-#define AppVersion "0.1.0"
+#ifndef AppVersion
+  #define AppVersion "0.0.0.0"
+#endif
 #define AppPublisher "Atualizador Windows"
 #define AppExeName "Atualizador.Windows.exe"
 #define PublishDir "..\artifacts\publish\win-x64"
@@ -25,7 +27,7 @@ UninstallDisplayIcon={app}\{#AppExeName}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-VersionInfoVersion={#AppVersion}.0
+VersionInfoVersion={#AppVersion}
 VersionInfoProductName={#AppName}
 VersionInfoDescription=Instalador do Atualizador Windows
 

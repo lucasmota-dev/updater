@@ -38,10 +38,6 @@
                                 Command="{Binding RefreshCommand}"
                                 AutomationProperties.Name="Atualizar lista de aplicativos"
                                 Style="{DynamicResource PrimaryButtonStyle}" />
-                        <Button Margin="8,0,0,0" Content="Abrir Microsoft Store"
-                                Command="{Binding OpenStoreCommand}"
-                                AutomationProperties.Name="Abrir atualizações da Microsoft Store"
-                                Style="{DynamicResource SecondaryButtonStyle}" />
                     </StackPanel>
                 </Grid>
 
@@ -59,7 +55,6 @@
                     <StackPanel>
                         <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource StatusTextStyle}" />
                         <TextBlock Margin="0,6,0,0" Text="{Binding CurrentPackageName}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                        <TextBlock Margin="0,6,0,0" Text="{Binding StoreMessage}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
                         <ProgressBar Margin="0,10,0,0" Height="5" Minimum="0" Maximum="100"
                                      Value="{Binding UpdateProgress, Mode=OneWay}"
                                      IsIndeterminate="{Binding IsUpdating, Mode=OneWay}"
@@ -69,10 +64,6 @@
                 </Border>
 
                 <Grid Grid.Row="2" Margin="0,20,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Selecionar todos" Command="{Binding SelectAllCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
                         <Button Margin="8,0,0,0" Content="Limpar seleção" Command="{Binding ClearSelectionCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
@@ -93,10 +84,6 @@
                                    Text="{Binding SelectedCount, StringFormat={}{0} selecionado(s)}"
                                    Style="{DynamicResource CaptionTextStyle}" />
                     </StackPanel>
-                    <ComboBox Grid.Column="1" ItemsSource="{Binding AvailableSourceFilters}"
-                              SelectedItem="{Binding SelectedSourceFilter, Mode=TwoWay}"
-                              AutomationProperties.Name="Filtrar por origem"
-                              Style="{DynamicResource SettingsComboBoxStyle}" />
                 </Grid>
 
                 <Grid Grid.Row="3">
@@ -631,6 +618,18 @@
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="Fechar" Command="{Binding DismissNotificationCommand}"
                         AutomationProperties.Name="Fechar notificação" Style="{DynamicResource SecondaryButtonStyle}" />
+                <Button DockPanel.Dock="Right" Margin="0,0,8,0" Command="{Binding OpenNotificationLinkCommand}"
+                        Content="{Binding Notifications.Current.ActionLabel}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Notifications.Current.ActionLabel}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
                 <StackPanel Margin="0,0,12,0">
                     <TextBlock Text="{Binding Notifications.Current.Title}" FontWeight="SemiBold" />
                     <TextBlock Margin="0,4,0,0" Text="{Binding Notifications.Current.Message}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />

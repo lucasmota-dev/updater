@@ -3,7 +3,7 @@
 
 ## Objetivo
 
-Criar um aplicativo desktop simples e moderno que use o WinGet para detectar e atualizar pacotes, permita selecionar aplicativos e ofereça execução agendada pelo Agendador de Tarefas do Windows. A integração com a Microsoft Store deve respeitar as limitações do WinGet e do contexto da sessão do usuário.
+Criar um aplicativo desktop simples e moderno que use o WinGet para detectar e atualizar pacotes, permita selecionar aplicativos e ofereça execução agendada pelo Agendador de Tarefas do Windows. Apenas a fonte `winget` é usada; a Microsoft Store não é suportada.
 
 ## Como trabalhar com estes arquivos
 
@@ -44,18 +44,18 @@ O código da aplicação será criado durante as etapas. Não é necessário ger
 
 ## Limites importantes
 
-- Não assumir que todos os aplicativos da Microsoft Store podem ser atualizados pelo WinGet.
+- Não incluir a Microsoft Store: o aplicativo trabalha somente com a fonte `winget`.
 - Não executar atualizações reais durante testes automatizados.
 - Não fingir uma porcentagem de progresso que o WinGet não fornece. Exibir o aplicativo atual e o progresso geral por quantidade; usar progresso indeterminado durante a instalação.
 - Não exigir privilégios administrativos para abrir o aplicativo. Tratar separadamente instalações que pedirem elevação.
-- A tarefa agendada deve usar inicialmente a conta do usuário configurada e o contexto de sessão compatível com WinGet/Store. Documentar limitações para execução com sessão encerrada.
+- A tarefa agendada deve usar inicialmente a conta do usuário configurada e o contexto de sessão compatível com WinGet. Documentar limitações para execução com sessão encerrada.
 - Não prometer que um único `.exe` remove a dependência do WinGet do computador de destino.
 
 ## Referências oficiais
 
 - WinGet: https://learn.microsoft.com/pt-br/windows/package-manager/winget/
 - Comando `upgrade`: https://learn.microsoft.com/pt-br/windows/package-manager/winget/upgrade
-- Fontes do WinGet, incluindo `msstore`: https://learn.microsoft.com/pt-br/windows/package-manager/winget/source
+- Fontes do WinGet: https://learn.microsoft.com/pt-br/windows/package-manager/winget/source
 - WPF: https://learn.microsoft.com/pt-br/dotnet/desktop/wpf/overview/
 - Publicação de arquivo único: https://learn.microsoft.com/pt-br/dotnet/core/deploying/single-file/overview
 
@@ -71,17 +71,26 @@ O aplicativo oferece:
 - descoberta de atualizações com WinGet, sem alterar fontes automaticamente;
 - exclusão de aplicativos da atualização com persistência local e gestão exclusiva em Configurações;
 - pesquisa e instalação de novos pacotes pelo WinGet com seleção múltipla, progresso e avisos de procedência;
-- seleção, filtro por origem, progresso, cancelamento e confirmação antes da atualização ou instalação;
+- seleção, progresso, cancelamento e confirmação antes da atualização ou instalação;
 - histórico JSON local em `%LOCALAPPDATA%\\Atualizador.Windows`;
 - agendamento e inicialização opcional por tarefas fixas e removíveis do Agendador de Tarefas, respeitando as exclusões;
 - ícone local baseado no Material Symbols `system_update` e área de notificação com menu acessível;
-- abertura da página de atualizações da Microsoft Store para itens da origem `msstore`.
+- aviso, ao abrir, quando existe versão mais nova publicada no GitHub (veja "Versões e releases").
+
+## Versões e releases
+
+- **Versão:** `yyyy.MM.dd.NN`, a data do lançamento (horário de Brasília) mais um contador do dia. Exemplos: `2026.10.28.01`, `2026.10.28.02`. A tag Git é `v2026.10.28.01`. Nunca se repete.
+- **Publicar:** no GitHub, `Actions > Release > Run workflow` (branch `main`). O workflow calcula a versão (`tools/Get-NextVersion.ps1`), compila, testa, gera `Atualizador.exe`, `Atualizador-Setup.exe` e `SHA256SUMS.txt` e cria a release com notas automáticas.
+- **CI:** `ci.yml` compila e testa em todo PR e push no `main`, e toda segunda-feira às 09:00 UTC para detectar quebras de SDK ou dependências.
+- **Dependências:** o Dependabot abre PRs semanais para NuGet e GitHub Actions.
+- **Aviso no aplicativo:** ao abrir, o app consulta a última release (`api.github.com`) e, se houver versão mais nova, mostra um aviso com botão para abrir a página da release. A verificação é silenciosa em caso de falha e não ocorre em compilações locais (versão `0.0.0.0`). Requer repositório público.
+- **Assinatura de código (opcional):** defina em `Settings > Secrets and variables > Actions` os segredos `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` e as variáveis `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_SIGNING_PROFILE`. Enquanto `AZURE_SIGNING_ACCOUNT` não existir, as etapas de assinatura são ignoradas.
 
 ## Requisitos
 
 - Windows 10 ou Windows 11 x64.
 - WinGet/App Installer para descoberta e atualização de aplicativos.
-- Sessão de usuário compatível com WinGet e Microsoft Store para operações que exigem interação ou acordos.
+- Sessão de usuário compatível com WinGet para operações que exigem interação ou acordos.
 
 O aplicativo não incorpora o WinGet e não exige privilégios administrativos para abrir.
 
@@ -121,10 +130,10 @@ O instalador `Atualizador-Setup.exe` é compilado pelo workflow do GitHub Action
 ## Limitações confirmadas
 
 - A saída do WinGet é uma tabela de texto; o parser cobre formatos testados em inglês, português e espanhol, mas pode exigir evolução para novos formatos.
-- `msstore` não representa todos os aplicativos instalados pela Microsoft Store.
+- A Microsoft Store (`msstore`) não é suportada: só a fonte `winget` é consultada.
 - Instaladores podem exigir UAC, interface própria ou reinicialização; cancelar o WinGet não garante rollback.
-- Agendamentos dependem da conta atual, da sessão compatível e das limitações do WinGet/Store quando o usuário está desconectado.
+- Agendamentos dependem da conta atual, da sessão compatível e das limitações do WinGet quando o usuário está desconectado.
 - A barra de progresso representa pacotes processados; durante o instalador individual ela é indeterminada.
-- A publicação não inclui assinatura de código.
+- A assinatura de código só é aplicada se a conta do Azure Trusted Signing estiver configurada (veja "Versões e releases"); sem ela, o Windows SmartScreen pode avisar sobre editor desconhecido.
 - O compilador Inno Setup não estava disponível localmente; a compilação do instalador foi preparada no workflow e não foi validada neste checkout.
 - Não execute `Atualizador.Windows.exe --scheduled` em um ambiente com agendamento ativo durante testes: esse modo pode iniciar atualizações reais. Use uma configuração desligada ou um ambiente isolado.

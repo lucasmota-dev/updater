@@ -111,7 +111,7 @@ public sealed class ScheduleSettingsViewModel : ViewModelBase
         }
 
         _scheduleStore.Save(preferences);
-        StatusMessage = "Agendamento salvo. Ele usa a conta atual e requer uma sessão compatível com WinGet/Store.";
+        StatusMessage = "Agendamento salvo. Ele usa a conta atual e requer uma sessão compatível com WinGet.";
     }
 
     private async Task DisableAsync()

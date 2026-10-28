@@ -31,7 +31,7 @@ public sealed class InstallItemViewModel : ViewModelBase
 
     public string Match => Package.Match;
 
-    public string Glyph => Package.IsMicrosoftStore ? "🏬" : "📦";
+    public string Glyph => "📦";
 
     public bool IsSelected
     {
@@ -61,7 +61,6 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
     private readonly ListCollectionView _filteredPackages;
     private CancellationTokenSource? _cancellationTokenSource;
     private string _searchQuery = string.Empty;
-    private string _selectedSource = "winget";
     private string _filterText = string.Empty;
     private string _statusMessage = "Digite o nome ou ID de um aplicativo e clique em Pesquisar.";
     private string _currentPackageName = string.Empty;
@@ -99,8 +98,6 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
 
     public ICollectionView FilteredPackages => _filteredPackages;
 
-    public IReadOnlyList<string> AvailableSources { get; } = ["winget", "msstore", "Todas"];
-
     public string SearchQuery
     {
         get => _searchQuery;
@@ -111,12 +108,6 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
                 SearchCommand.RaiseCanExecuteChanged();
             }
         }
-    }
-
-    public string SelectedSource
-    {
-        get => _selectedSource;
-        set => SetProperty(ref _selectedSource, value);
     }
 
     public string FilterText
@@ -205,7 +196,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
 
         IsSearching = true;
         IsError = false;
-        StatusMessage = $"Pesquisando por '{SearchQuery.Trim()}' na fonte {SelectedSource}…";
+        StatusMessage = $"Pesquisando por '{SearchQuery.Trim()}' no catálogo do WinGet…";
         CurrentPackageName = string.Empty;
 
         _cancellationTokenSource?.Dispose();
@@ -215,7 +206,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
         {
             var result = await _wingetService.SearchAsync(
                 SearchQuery.Trim(),
-                SelectedSource,
+                "winget",
                 _cancellationTokenSource.Token);
 
             ReplacePackages(result.Packages);
@@ -300,7 +291,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
                 startedAt,
                 DateTimeOffset.Now,
                 HistoryOperation.Instalacao,
-                SelectedSource,
+                "winget",
                 results.Count,
                 finalStatus,
                 StatusMessage,

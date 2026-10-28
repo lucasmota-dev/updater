@@ -4,12 +4,10 @@ public sealed record InstallablePackage(
     string Name,
     string Id,
     string Version,
-    string Source,
-    string Publisher,
+    string Source = "winget",
+    string Publisher = "",
     string Match = "")
 {
-    public bool IsMicrosoftStore => Source.Equals("msstore", StringComparison.OrdinalIgnoreCase);
-
     public static string InferPublisher(string id, string? explicitPublisher = null)
     {
         if (!string.IsNullOrWhiteSpace(explicitPublisher))
@@ -47,4 +45,3 @@ public sealed record WingetSearchResult(
     string Message,
     int? ExitCode = null,
     IReadOnlyList<string>? Warnings = null);
-
