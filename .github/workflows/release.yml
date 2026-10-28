@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Baixar o código e as tags
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
