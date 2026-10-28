@@ -1,4 +1,4 @@
-namespace Atualizador.Windows.Models;
+﻿namespace Atualizador.Windows.Models;
 
 public enum NotificationKind
 {
@@ -7,4 +7,9 @@ public enum NotificationKind
     Erro
 }
 
-public sealed record AppNotification(NotificationKind Kind, string Title, string Message);
+public sealed record AppNotification(
+    NotificationKind Kind,
+    string Title,
+    string Message,
+    string? ActionLabel = null,
+    Uri? ActionUri = null);

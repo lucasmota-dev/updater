@@ -47,12 +47,10 @@ description: Implement, test, and review safe WinGet process execution, package 
 - Cobrir saída extensa, erro, timeout, código de saída, cancelamento, IDs malformados, strings especiais e fontes ausentes.
 - Nos testes manuais, pedir confirmação antes da primeira instalação/atualização real.
 
-## Microsoft Store
+## Fontes
 
-- A fonte `msstore` do WinGet não garante descoberta/atualização de todos os aplicativos da Store.
+- O projeto usa somente a fonte `winget`; a Microsoft Store (`msstore`) não é suportada.
 - Usar IDs e origem conforme o resultado real; não adivinhar IDs de produto.
-- Diferenciar pacotes gerenciáveis pelo WinGet de aplicativos que exigem a interface da Store.
-- Oferecer um caminho claro para abrir a Store quando necessário.
 - Não modificar fontes automaticamente nem executar `source reset`.
 
 ## Logs e segurança

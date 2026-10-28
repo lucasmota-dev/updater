@@ -61,14 +61,21 @@ Siga `.claude/skills/windows-11-wpf-design/SKILL.md`. Interface em português br
 
 Não usar imagens remotas como dependência dos ícones. Preferir ícones locais e fallback consistente. Não imitar elementos do Windows sem necessidade. Efeitos translúcidos devem ser moderados e não comprometer contraste/desempenho.
 
-## WinGet e Microsoft Store
+## WinGet
+
+- O aplicativo usa apenas a fonte `winget`. Não há suporte à fonte `msstore`/Microsoft Store e a descoberta de atualizações consulta somente `--source winget`.
 
 - Verificar o comportamento real da versão instalada e a documentação oficial antes de depender de uma opção de CLI.
 - Não presumir que a saída do WinGet é JSON nem que todas as versões oferecem saída estruturada para `upgrade`. Validar abordagem de descoberta e parsing com versões reais e saída de diferentes idiomas.
 - Usar `--id`, `--exact`, `--source` e opções silenciosas explícitas quando forem aplicáveis e confirmadas pela documentação. Não inventar parâmetros.
 - Capturar `stdout`, `stderr`, código de saída, cancelamento e timeout. Tratar códigos não zero sem encobrir o erro.
 - Exibir progresso por pacote. Usar barra indeterminada durante tarefas sem percentual confiável.
-- A fonte `msstore` não garante que todo aplicativo da Microsoft Store seja gerenciável pelo WinGet. Explicar o que foi encontrado e oferecer abertura da Store para os casos não gerenciáveis.
+
+## Versionamento e release
+
+- Versão no padrão `yyyy.MM.dd.NN` (ex.: `2026.10.28.01`; `NN` reinicia a cada dia, horário de Brasília). Tag Git: `v2026.10.28.01`.
+- A versão nunca é escrita à mão: `tools/Get-NextVersion.ps1` a calcula e o workflow `release.yml` a injeta (`-p:Version`, `/DAppVersion`). Compilações locais ficam em `0.0.0.0` e não verificam atualização.
+- Release só pelo workflow `Release` (manual, branch `main`). `ci.yml` valida PRs, pushes no `main` e roda semanalmente.
 
 ## Testes e qualidade
 

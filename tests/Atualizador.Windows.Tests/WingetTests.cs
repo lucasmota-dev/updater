@@ -149,6 +149,23 @@ public sealed class WingetServiceTests
     }
 
     [TestMethod]
+    public async Task DiscoverUpdates_QueriesOnlyTheWingetSource()
+    {
+        var executor = new FakeProcessExecutor(
+        [
+            new(true, 0, "v1.29.380", string.Empty, false, false, null),
+            new(true, 0, "Name Argument Explicit\n-----------------------\nwinget https://example.test false", string.Empty, false, false, null),
+            new(true, 0, string.Empty, string.Empty, false, false, null)
+        ]);
+        var service = new WingetService(executor, new FakeLocator("winget.exe"));
+
+        await service.DiscoverUpdatesAsync();
+
+        var arguments = executor.Requests[2].Arguments.ToList();
+        Assert.AreEqual("winget", arguments[arguments.IndexOf("--source") + 1]);
+    }
+
+    [TestMethod]
     public async Task DiscoverUpdates_ReturnsSourceFailureWithoutRunningDiscovery()
     {
         var executor = new FakeProcessExecutor(

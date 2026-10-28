@@ -52,7 +52,7 @@ public sealed class WingetService : IPackageUpdateService
                 WingetSourceParser.Parse(sourceResult.StandardOutput));
         }
 
-        var arguments = new List<string> { "list", "--upgrade-available", "--disable-interactivity" };
+        var arguments = new List<string> { "list", "--upgrade-available", "--source", "winget", "--disable-interactivity" };
         if (includeUnknown)
         {
             arguments.Add("--include-unknown");

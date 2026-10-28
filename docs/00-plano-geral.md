@@ -24,7 +24,7 @@ Construir o aplicativo por etapas pequenas e verificáveis. Implementar apenas u
 | 5 | `05-execucao-progresso.md` | CONCLUÍDA | 4 |
 | 6 | `06-historico-logs.md` | CONCLUÍDA | 5 |
 | 7 | `07-agendamento.md` | CONCLUÍDA | 5, 6 |
-| 8 | `08-msstore.md` | CONCLUÍDA | 3, 5 |
+| 8 | `08-msstore.md` | REMOVIDA (só `winget`) | 3, 5 |
 | 9 | `09-notificacoes-inicializacao.md` | CONCLUÍDA | 7, 8 |
 | 10 | `10-publicacao-instalacao.md` | CONCLUÍDA | 1–9 |
 | 11 | `11-testes-seguranca.md` | CONCLUÍDA | 1–10 |
@@ -76,7 +76,7 @@ Os itens abaixo foram solicitados e já têm implementação parcial no checkout
 - Etapa 5: atualização individual sequencial com argumentos seguros, confirmação, progresso por pacote, cancelamento, estados por item e 12 testes automatizados simulados. Nenhuma atualização real foi executada.
 - Etapa 6: histórico JSON versionado com escrita atômica, retenção de 100 registros, recuperação de corrupção, filtros, detalhes, abertura de pasta e limpeza confirmada. Descoberta real persistida e exibida.
 - Etapa 7: configuração e persistência de agendamento, tarefa nativa com nome fixo, escopo explícito, modo `--scheduled`, exclusão mútua e testes reais de criar/desativar/reativar/remover sem disparar atualização.
-- Etapa 8: origem `msstore` preservada na identidade dos pacotes, deduplicação por ID+origem e botão para a página oficial de atualizações da Microsoft Store.
+- Etapa 8: removida. Origem `msstore`, filtro por origem e botão da Microsoft Store foram retirados; a descoberta usa só `--source winget`.
 - Etapa 9: notificações internas não bloqueantes, opção explícita de inicialização e tarefa removível, desligada por padrão. Não foi criado serviço Windows.
 - Etapa 10: publicação autocontida `win-x64` em arquivo único, ZIP repetível e validação de abertura; WinGet continua sendo requisito externo.
 - Etapa 11: conjunto de 21 testes automatizados aprovado, revisão de chamadas de processo/argumentos/caminhos e validações reais sem executar atualização de software.

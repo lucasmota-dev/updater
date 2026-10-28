@@ -1,6 +1,8 @@
 # Etapa 8 — Microsoft Store
 
-**Estado:** CONCLUÍDA
+**Estado:** REMOVIDA (28/10/2026). O projeto passou a usar somente a fonte `winget`: o botão "Abrir Microsoft Store", o filtro por origem e o serviço da Store foram retirados, e a descoberta consulta `--source winget`. O texto abaixo é o histórico da etapa original.
+
+**Estado original:** CONCLUÍDA
 **Modelo recomendado:** Opus 5.5, esforço alto para verificar cobertura e limites; Sonnet 5.5/medio para implementação.
 
 ## Objetivo

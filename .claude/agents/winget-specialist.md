@@ -1,6 +1,6 @@
 ---
 name: winget-specialist
-description: Analisa descoberta e atualização de pacotes via WinGet, execução segura de processos, códigos de saída e limites da Microsoft Store.
+description: Analisa descoberta e atualização de pacotes via WinGet, execução segura de processos, códigos de saída.
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
 ---
