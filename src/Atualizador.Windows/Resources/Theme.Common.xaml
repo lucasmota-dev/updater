@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Semantic brushes used across both Light and Dark themes -->
+    <!-- Input fields -->
+    <SolidColorBrush x:Key="InputBackgroundBrush" Color="{DynamicResource SurfaceBrush}" />
+    <SolidColorBrush x:Key="InputForegroundBrush" Color="{DynamicResource PrimaryTextBrush}" />
+    <SolidColorBrush x:Key="InputBorderBrush" Color="{DynamicResource BorderBrush}" />
+    <!-- Hover / Selected -->
+    <SolidColorBrush x:Key="HoverBrush" Color="{DynamicResource SurfaceHoverBrush}" />
+    <SolidColorBrush x:Key="SelectedBrush" Color="{DynamicResource AccentBrush}" />
+    <!-- Disabled -->
+    <SolidColorBrush x:Key="DisabledForegroundBrush" Color="{DynamicResource DisabledControlBrush}" />
+    <!-- Accent variations -->
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="{DynamicResource AccentBrushHover}" />
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="{DynamicResource AccentBrushPressed}" />
+    <!-- Selection and subtle accent for list items -->
+    <SolidColorBrush x:Key="SelectionBrush" Color="{DynamicResource AccentBrush}" />
+    <SolidColorBrush x:Key="SubtleAccentBrush" Color="{DynamicResource AccentBrushHover}" />
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="{DynamicResource AccentBrushPressed}" />
+</ResourceDictionary>
