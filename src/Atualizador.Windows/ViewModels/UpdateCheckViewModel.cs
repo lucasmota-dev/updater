@@ -49,9 +49,9 @@ namespace Atualizador.Windows.ViewModels
                 {
                     Status = "Aplicativo já está na versão mais recente.";
                     // fecha a janela de splash – a aplicação continuará
-                    Application.Current.Dispatcher.Invoke(() =>
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
-                        foreach (Window w in Application.Current.Windows)
+                        foreach (Window w in System.Windows.Application.Current.Windows)
                             if (w.GetType().Name == "UpdateCheckWindow") w.Close();
                     });
                     return;
@@ -87,20 +87,20 @@ namespace Atualizador.Windows.ViewModels
 
                 Status = "Atualização concluída. Reiniciando…";
                 // fecha o splash e encerra a aplicação – o instalador já substituiu os arquivos
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    foreach (Window w in Application.Current.Windows)
-                        if (w.GetType().Name == "UpdateCheckWindow") w.Close();
-                    Application.Current.Shutdown();
-                });
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        foreach (Window w in System.Windows.Application.Current.Windows)
+                            if (w.GetType().Name == "UpdateCheckWindow") w.Close();
+                        System.Windows.Application.Current.Shutdown();
+                    });
             }
             catch (Exception ex)
             {
                 Status = $"Falha na atualização: {ex.Message}";
                 // encerra splash e permite iniciar aplicação normalmente
-                Application.Current.Dispatcher.Invoke(() =>
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
-                    foreach (Window w in Application.Current.Windows)
+                    foreach (Window w in System.Windows.Application.Current.Windows)
                         if (w.GetType().Name == "UpdateCheckWindow") w.Close();
                 });
             }
