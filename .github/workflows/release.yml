@@ -127,7 +127,7 @@ jobs:
           $signature = Get-AuthenticodeSignature -FilePath $installer
           if ($signature.Status -ne 'Valid') { throw "Assinatura do Inno Setup inválida: $($signature.Status)" }
           $subject = $signature.SignerCertificate.Subject
-          if ($subject -notmatch 'Jordan Russell|JR Software') { throw "Signatário inesperado no instalador do Inno Setup: $subject" }
+          if ($subject -notmatch 'Jordan Russell|JR Software|Pyrsys') { throw "Signatário inesperado no instalador do Inno Setup: $subject" }
           Write-Host "Inno Setup assinado por: $subject"
           $process = Start-Process -FilePath $installer -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait -NoNewWindow -PassThru
           if ($process.ExitCode -ne 0) { throw "A instalação do Inno Setup falhou com código $($process.ExitCode)." }

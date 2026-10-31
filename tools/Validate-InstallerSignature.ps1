@@ -27,3 +27,4 @@ if (-not ($AllowedSigners -contains $subject)) {
 }
 
 Write-Host "Installer signature validated successfully: $subject"
+
