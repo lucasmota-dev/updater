@@ -96,6 +96,10 @@ jobs:
           dotnet publish src/Atualizador.Windows/Atualizador.Windows.csproj --configuration Release --no-restore --output artifacts/publish/win-x64 -p:PublishProfile=WinX64 -p:Version=${{ steps.version.outputs.version }}
           New-Item -ItemType Directory -Force artifacts/release | Out-Null
 
+      - name: Testar abertura do executável publicado
+        shell: pwsh
+        run: ./tools/Test-AppStartup.ps1 -ExePath artifacts/publish/win-x64/Atualizador.Windows.exe
+
       - name: Assinar executável
         if: env.SIGNING_ENABLED == 'true'
         uses: Azure/trusted-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0

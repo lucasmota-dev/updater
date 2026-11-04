@@ -42,6 +42,10 @@ jobs:
         shell: pwsh
         run: dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release --no-build
 
+      - name: Testar abertura do aplicativo
+        shell: pwsh
+        run: ./tools/Test-AppStartup.ps1 -ExePath src/Atualizador.Windows/bin/Release/net10.0-windows/Atualizador.Windows.exe
+
       - name: Testar cálculo de versão
         shell: pwsh
         run: |
