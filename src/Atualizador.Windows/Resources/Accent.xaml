@@ -2,12 +2,12 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- Valores iniciais da cor de destaque. O AppearanceService substitui todas estas chaves
          ao abrir o app e sempre que o usuário muda a cor em Configurações. -->
-    <Color x:Key="AccentColor">#0067C0</Color>
+    <Color x:Key="AccentColor">#0071E3</Color>
     <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}" />
-    <SolidColorBrush x:Key="AccentBrushHover" Color="#005A9E" />
-    <SolidColorBrush x:Key="AccentBrushPressed" Color="#004578" />
+    <SolidColorBrush x:Key="AccentBrushHover" Color="#0062C4" />
+    <SolidColorBrush x:Key="AccentBrushPressed" Color="#0052A3" />
     <SolidColorBrush x:Key="AccentForegroundBrush" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="SubtleAccentBrush" Color="#160067C0" />
-    <SolidColorBrush x:Key="SelectionBrush" Color="#350067C0" />
-    <SolidColorBrush x:Key="FocusBrush" Color="#0067C0" />
+    <SolidColorBrush x:Key="SubtleAccentBrush" Color="#1F0071E3" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="#2E0071E3" />
+    <SolidColorBrush x:Key="FocusBrush" Color="#0071E3" />
 </ResourceDictionary>

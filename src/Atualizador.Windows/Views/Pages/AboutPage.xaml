@@ -16,15 +16,15 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel MaxWidth="720" HorizontalAlignment="Left">
             <!-- Cabeçalho -->
-            <DockPanel Margin="0,0,0,24">
-                <Border DockPanel.Dock="Left" Width="56" Height="56" Margin="0,0,16,0" CornerRadius="14"
+            <DockPanel Margin="0,0,0,16">
+                <Border DockPanel.Dock="Left" Width="44" Height="44" Margin="0,0,12,0" CornerRadius="11"
                         Background="{DynamicResource AccentBrush}">
-                    <TextBlock Text="&#xE895;" FontSize="26" Foreground="{DynamicResource AccentForegroundBrush}"
+                    <TextBlock Text="&#xE895;" FontSize="20" Foreground="{DynamicResource AccentForegroundBrush}"
                                Style="{DynamicResource IconTextStyle}" />
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="App Updater" Style="{DynamicResource SectionTitleTextStyle}" />
-                    <TextBlock Margin="0,4,0,0" Style="{DynamicResource CaptionTextStyle}">
+                    <TextBlock Margin="0,2,0,0" Style="{DynamicResource CaptionTextStyle}">
                         <Run Text="{Binding AppUpdate.CurrentVersionText, Mode=OneWay}" /> • Licença MIT • Código aberto
                     </TextBlock>
                 </StackPanel>
@@ -57,9 +57,8 @@
 
             <GroupBox Header="Criador" Style="{DynamicResource SettingsGroupStyle}">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" VerticalAlignment="Center" Content="Perfil no GitHub"
-                            Command="{Binding OpenLinkCommand}" CommandParameter="author"
-                            Style="{DynamicResource SecondaryButtonStyle}" />
+                    <Button DockPanel.Dock="Right" VerticalAlignment="Center" Content="Perfil no GitHub" Style="{DynamicResource PlainButtonStyle}"
+                            Command="{Binding OpenLinkCommand}" CommandParameter="author" />
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="Lucas Mota" Style="{DynamicResource LabelTextStyle}" />
                         <TextBlock Margin="0,2,0,0" Text="Desenvolvedor do App Updater" Style="{DynamicResource CaptionTextStyle}" />
@@ -69,20 +68,25 @@
 
             <GroupBox Header="Atualização do App Updater" Style="{DynamicResource SettingsGroupStyle}">
                 <StackPanel>
-                    <TextBlock Text="{Binding AppUpdate.CurrentVersionText}" Style="{DynamicResource LabelTextStyle}" />
-                    <CheckBox Margin="0,12,0,0"
-                              IsChecked="{Binding AppUpdate.CheckOnStartup, Mode=TwoWay}"
-                              Style="{DynamicResource CheckBoxStyle}"
-                              Content="Procurar nova versão ao abrir o aplicativo" />
-                    <TextBlock Margin="0,6,0,0"
-                               Text="A busca consulta a página de releases do projeto no GitHub. Nenhum dado pessoal ou lista de aplicativos é enviado."
-                               TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                    <Button Margin="0,14,0,0" HorizontalAlignment="Left" Content="Buscar nova versão"
-                            Command="{Binding AppUpdate.CheckCommand}"
-                            ToolTip="Procurar uma versão mais nova do App Updater no GitHub e instalá-la."
-                            AutomationProperties.Name="Buscar nova versão do App Updater"
-                            Style="{DynamicResource PrimaryButtonStyle}" />
-                    <TextBlock Margin="0,8,0,0" Text="{Binding AppUpdate.StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Center" Content="Buscar nova versão"
+                                Command="{Binding AppUpdate.CheckCommand}"
+                                ToolTip="Procurar uma versão mais nova do App Updater no GitHub e instalá-la."
+                                AutomationProperties.Name="Buscar nova versão do App Updater"
+                                Style="{DynamicResource PrimaryButtonStyle}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding AppUpdate.CurrentVersionText}" Style="{DynamicResource LabelTextStyle}" />
+                            <TextBlock Text="{Binding AppUpdate.StatusMessage}" Style="{DynamicResource OptionalCaptionTextStyle}" />
+                        </StackPanel>
+                    </DockPanel>
+                    <Rectangle Height="1" Margin="0,10" Fill="{DynamicResource SeparatorBrush}" />
+                    <CheckBox IsChecked="{Binding AppUpdate.CheckOnStartup, Mode=TwoWay}" Style="{DynamicResource ToggleSwitchStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Procurar nova versão ao abrir o aplicativo" Style="{DynamicResource LabelTextStyle}" />
+                            <TextBlock Text="Consulta só a página de releases no GitHub. Nenhum dado pessoal é enviado."
+                                       Style="{DynamicResource OptionalCaptionTextStyle}" />
+                        </StackPanel>
+                    </CheckBox>
                 </StackPanel>
             </GroupBox>
 

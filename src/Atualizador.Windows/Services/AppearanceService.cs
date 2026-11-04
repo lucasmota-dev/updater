@@ -26,7 +26,7 @@ public sealed class AppearanceService
 
     private const string LightThemeSource = "Resources/Theme.Light.xaml";
     private const string DarkThemeSource = "Resources/Theme.Dark.xaml";
-    private static readonly Color FallbackAccent = Color.FromRgb(0x00, 0x67, 0xC0);
+    private static readonly Color FallbackAccent = Color.FromRgb(0x00, 0x71, 0xE3);
     private readonly AppearancePreferencesStore _preferencesStore;
 
     public AppearanceService(AppearancePreferencesStore? preferencesStore = null)
@@ -67,7 +67,7 @@ public sealed class AppearanceService
     {
         if (!TryParseHexColor(hex, out var color))
         {
-            errorMessage = "Informe uma cor hexadecimal válida, por exemplo, #0067C0.";
+            errorMessage = "Informe uma cor hexadecimal válida, por exemplo, #0071E3.";
             return false;
         }
 
@@ -190,8 +190,8 @@ public sealed class AppearanceService
         resources["AccentBrushPressed"] = CreateBrush(AdjustBrightness(accent, 0.72));
         // Texto sobre a cor de destaque: preto em cores claras, branco nas demais (contraste).
         resources["AccentForegroundBrush"] = CreateBrush(GetLuminance(accent) > 0.62 ? Colors.Black : Colors.White);
-        resources["SubtleAccentBrush"] = CreateBrush(Color.FromArgb(0x18, accent.R, accent.G, accent.B));
-        resources["SelectionBrush"] = CreateBrush(Color.FromArgb(0x45, accent.R, accent.G, accent.B));
+        resources["SubtleAccentBrush"] = CreateBrush(Color.FromArgb(0x1F, accent.R, accent.G, accent.B));
+        resources["SelectionBrush"] = CreateBrush(Color.FromArgb(0x2E, accent.R, accent.G, accent.B));
         resources["FocusBrush"] = CreateBrush(accent);
     }
 

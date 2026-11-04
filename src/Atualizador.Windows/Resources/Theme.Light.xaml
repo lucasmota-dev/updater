@@ -1,19 +1,25 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- Cores do tema claro. O AppearanceService troca este arquivo pelo Theme.Dark.xaml em tempo de execução;
-         por isso as telas usam sempre DynamicResource. As chaves devem ser as mesmas nos dois temas. -->
-    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F7F7F7" />
-    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#F2F2F2" />
-    <SolidColorBrush x:Key="SurfacePressedBrush" Color="#E6E6E6" />
-    <SolidColorBrush x:Key="DisabledControlBrush" Color="#F0F0F0" />
-    <SolidColorBrush x:Key="ProgressTrackBrush" Color="#E5E5E5" />
-    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#1A1A1A" />
-    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#5D5D5D" />
-    <SolidColorBrush x:Key="BorderBrush" Color="#E1E1E1" />
-    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#B8B8B8" />
-    <SolidColorBrush x:Key="SuccessBrush" Color="#107C10" />
-    <SolidColorBrush x:Key="WarningBrush" Color="#9D5D00" />
-    <SolidColorBrush x:Key="ErrorBrush" Color="#C42B1C" />
-    <SolidColorBrush x:Key="ErrorSubtleBrush" Color="#18C42B1C" />
+    <!-- Tema claro (tokens do design system HIG Inspired). O AppearanceService troca este arquivo pelo
+         Theme.Dark.xaml em tempo de execução; por isso as telas usam sempre DynamicResource.
+         As chaves devem ser as mesmas nos dois temas. -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F2F2F7" />   <!-- surface: fundo da janela -->
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />            <!-- surface-raised: cartões e listas -->
+    <SolidColorBrush x:Key="SunkenBrush" Color="#E5E5EA" />             <!-- surface-sunken: preenchimento de controles -->
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#F5F5F7" />
+    <SolidColorBrush x:Key="SurfacePressedBrush" Color="#E5E5EA" />
+    <SolidColorBrush x:Key="SunkenHoverBrush" Color="#D9D9DE" />
+    <SolidColorBrush x:Key="DisabledControlBrush" Color="#F2F2F7" />
+    <SolidColorBrush x:Key="ProgressTrackBrush" Color="#E5E5EA" />
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#1D1D1F" />        <!-- label -->
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#6E6E73" />      <!-- label-secondary -->
+    <SolidColorBrush x:Key="BorderBrush" Color="#D8D8DC" />             <!-- separator (contornos de cartão) -->
+    <SolidColorBrush x:Key="SeparatorBrush" Color="#E5E5EA" />          <!-- linha fina entre itens de lista -->
+    <SolidColorBrush x:Key="ControlBorderBrush" Color="#7C7C80" />      <!-- control-border: campos de texto (3:1) -->
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#C7C7CC" />
+    <SolidColorBrush x:Key="SwitchThumbBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#1A7431" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#B25000" />
+    <SolidColorBrush x:Key="ErrorBrush" Color="#D70015" />
+    <SolidColorBrush x:Key="ErrorSubtleBrush" Color="#14D70015" />
 </ResourceDictionary>

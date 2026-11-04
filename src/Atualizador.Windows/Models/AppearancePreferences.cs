@@ -10,7 +10,7 @@ public sealed record AppearancePreferences(
     string AccentHex)
 {
     public const int CurrentVersion = 1;
-    public const string DefaultAccentHex = "#0067C0";
+    public const string DefaultAccentHex = "#0071E3";
 
     public static AppearancePreferences Defaults { get; } =
         new(CurrentVersion, AppearanceMode.Sistema, DefaultAccentHex);

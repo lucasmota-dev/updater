@@ -323,8 +323,8 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
 
         if (processed.Count > 0 && !_lifetime.IsCancellationRequested)
         {
-            var succeeded = processed.Count(item => item.Status == PackageUpdateStatus.Succeeded);
-            var message = $"Fila concluída: {succeeded} de {processed.Count} aplicativo(s) instalado(s).";
+            var succeeded = processed.Count(item => item.Status is PackageUpdateStatus.Succeeded or PackageUpdateStatus.RestartRequired or PackageUpdateStatus.Ignored);
+            var message = $"Fila concluída: {succeeded} de {processed.Count} aplicativo(s) instalado(s) ou já em dia.";
             StatusMessage = message;
             _notificationService?.Publish(new(
                 succeeded == processed.Count ? NotificationKind.Sucesso : NotificationKind.Informacao,
@@ -381,7 +381,8 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
             1,
             item.Status switch
             {
-                PackageUpdateStatus.Succeeded => HistoryEntryStatus.Sucesso,
+                PackageUpdateStatus.Succeeded or PackageUpdateStatus.RestartRequired => HistoryEntryStatus.Sucesso,
+                PackageUpdateStatus.Ignored => HistoryEntryStatus.SemAtualizacoes,
                 PackageUpdateStatus.Canceled => HistoryEntryStatus.Cancelado,
                 _ => HistoryEntryStatus.Falha
             },

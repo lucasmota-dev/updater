@@ -26,11 +26,11 @@
 
         <StackPanel Grid.Row="0">
             <TextBlock Text="{Binding Title}" Style="{DynamicResource SectionTitleTextStyle}" />
-            <TextBlock Margin="0,6,0,0" Text="{Binding Description}" TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}" />
+            <TextBlock Margin="0,2,0,0" Text="{Binding Description}" TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}" />
         </StackPanel>
 
         <!-- Pesquisa: Enter no campo também pesquisa. -->
-        <DockPanel Grid.Row="1" Margin="0,20,0,0">
+        <DockPanel Grid.Row="1" Margin="0,14,0,0">
             <Button DockPanel.Dock="Right" Margin="12,0,0,0" Content="Pesquisar" Command="{Binding SearchCommand}"
                     AutomationProperties.Name="Pesquisar aplicativos"
                     Style="{DynamicResource PrimaryButtonStyle}" />
@@ -44,17 +44,15 @@
             </TextBox>
         </DockPanel>
 
-        <Border Grid.Row="2" Margin="0,16,0,16" Style="{DynamicResource StatusPanelStyle}">
+        <Border Grid.Row="2" Margin="0,12,0,12" Style="{DynamicResource StatusPanelStyle}">
             <StackPanel>
                 <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource StatusTextStyle}" />
-                <ProgressBar Margin="0,8,0,0" Height="5" Minimum="0" Maximum="100"
+                <ProgressBar Margin="0,6,0,0" Minimum="0" Maximum="100" Visibility="{Binding IsSearching, Converter={StaticResource BooleanToVisibilityConverter}}"
                              IsIndeterminate="{Binding IsSearching, Mode=OneWay}"
                              Style="{DynamicResource ProgressBarStyle}" />
-                <TextBlock Margin="0,8,0,0"
-                           Text="Revise o publicador antes de instalar: estar no catálogo do WinGet não garante que o aplicativo seja seguro."
-                           TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
             </StackPanel>
         </Border>
+        <!-- O aviso de procedência ("revise o publicador") aparece na confirmação antes de instalar. -->
 
         <!-- Resultados da pesquisa -->
         <Border Grid.Row="3" Style="{DynamicResource ListCardStyle}">
@@ -220,7 +218,7 @@
                                     <TextBlock TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}">
                                         <Run Text="{Binding Id, Mode=OneWay}" /> • <Run Text="{Binding Version, Mode=OneWay}" />
                                     </TextBlock>
-                                    <ProgressBar Margin="0,6,0,0" Height="3" IsIndeterminate="True" Style="{DynamicResource ProgressBarStyle}"
+                                    <ProgressBar Margin="0,4,0,0" Height="3" IsIndeterminate="True" Style="{DynamicResource ProgressBarStyle}"
                                                  Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 </StackPanel>
                             </DockPanel>

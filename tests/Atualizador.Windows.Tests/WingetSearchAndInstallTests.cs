@@ -167,7 +167,7 @@ public sealed class WingetSearchAndInstallTests
     {
         var executor = new FakeProcessExecutor(
         [
-            new(true, -1978335215, string.Empty, "Installer requires interactive prompt.", false, false, null)
+            new(true, 1, string.Empty, "Installer requires interactive prompt.", false, false, null)
         ]);
         var service = new WingetService(executor, new FakeLocator("winget.exe"));
         var package = new InstallablePackage("Interactive App", "Vendor.InteractiveApp", "1.0", "winget", "Vendor");

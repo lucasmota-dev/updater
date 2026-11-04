@@ -30,8 +30,8 @@ public static class ElevationGuard
     /// </summary>
     public static string ElevationAdvice => IsUacEnabled()
         ? "Feche o App Updater e abra-o normalmente, sem \"Executar como administrador\"."
-        : "O Controle de Conta de Usuário (UAC) está desligado neste computador, então todo programa roda como administrador. "
-          + "Para resolver, religue o UAC (Painel de Controle › Contas de Usuário › Alterar configurações de Controle de Conta de Usuário) e reinicie o computador.";
+        : "O Controle de Conta de Usuário (UAC) está desligado, então todo programa roda como administrador. "
+          + "Religue o UAC em Painel de Controle › Contas de Usuário e reinicie o computador.";
 
     /// <summary>
     /// Reabre o app sem elevação, se possível. Retorna <c>true</c> quando a cópia nova foi iniciada

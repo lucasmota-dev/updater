@@ -11,7 +11,7 @@
 
         <StackPanel Grid.Row="0">
             <TextBlock Text="{Binding Title}" Style="{DynamicResource SectionTitleTextStyle}" />
-            <TextBlock Margin="0,6,0,0" Text="{Binding Description}" TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}" />
+            <TextBlock Margin="0,2,0,0" Text="{Binding Description}" TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}" />
         </StackPanel>
 
         <!-- Filtros e ações -->

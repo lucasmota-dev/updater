@@ -1,151 +1,212 @@
-<!-- Página Configurações (DataContext: SettingsPageViewModel). Cada GroupBox é uma seção com o seu próprio ViewModel. -->
+<!--
+    Página Configurações (DataContext: SettingsPageViewModel). Cada GroupBox é uma seção com o seu ViewModel.
+    Layout de linhas de configuração (HIG): rótulo e explicação curta à esquerda, controle à direita,
+    separador fino entre linhas. Os alternadores aplicam a mudança na hora (Command no próprio CheckBox).
+-->
 <UserControl x:Class="Atualizador.Windows.Views.Pages.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <!-- Linha: o controle (último filho com DockPanel.Dock="Right") fica alinhado à direita. -->
+        <Style x:Key="SettingRowStyle" TargetType="DockPanel">
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="LastChildFill" Value="True" />
+        </Style>
+        <Style x:Key="RowSeparatorStyle" TargetType="Rectangle">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="0,10" />
+            <Setter Property="Fill" Value="{DynamicResource SeparatorBrush}" />
+        </Style>
+        <Style x:Key="RowComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource SettingsComboBoxStyle}">
+            <Setter Property="DockPanel.Dock" Value="Right" />
+            <Setter Property="Width" Value="240" />
+            <Setter Property="Margin" Value="16,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+        <StackPanel MaxWidth="680" Margin="0,0,12,0" HorizontalAlignment="Left">
             <TextBlock Text="{Binding Title}" Style="{DynamicResource SectionTitleTextStyle}" />
-            <TextBlock Margin="0,6,0,24" Text="{Binding Description}" TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}" />
+            <TextBlock Margin="0,2,0,16" Text="{Binding Description}" TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}" />
 
             <GroupBox Header="Aparência" Style="{DynamicResource SettingsGroupStyle}">
                 <StackPanel>
-                    <TextBlock Text="Tema" Style="{DynamicResource LabelTextStyle}" />
-                    <TextBlock Margin="0,4,0,8" Text="Escolha como o aplicativo deve acompanhar o Windows." TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                    <ComboBox ItemsSource="{Binding Appearance.AvailableModes}"
-                              SelectedItem="{Binding Appearance.SelectedMode, Mode=TwoWay}"
-                              ItemTemplate="{StaticResource DisplayTextTemplate}"
-                              AutomationProperties.Name="Tema do aplicativo"
-                              Style="{DynamicResource SettingsComboBoxStyle}" />
-
-                    <TextBlock Margin="0,20,0,0" Text="Cor de destaque" Style="{DynamicResource LabelTextStyle}" />
-                    <TextBlock Margin="0,4,0,8" Text="A cor é aplicada a botões principais, foco e seleção." TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                    <ComboBox ItemsSource="{Binding Appearance.AccentOptions}"
-                              SelectedItem="{Binding Appearance.SelectedAccent, Mode=TwoWay}"
-                              DisplayMemberPath="Name"
-                              AutomationProperties.Name="Cor de destaque predefinida"
-                              Style="{DynamicResource SettingsComboBoxStyle}" />
-
-                    <TextBlock Margin="0,20,0,0" Text="Cor personalizada em hexadecimal" Style="{DynamicResource LabelTextStyle}" />
-                    <DockPanel Margin="0,8,0,0">
-                        <Button DockPanel.Dock="Right" Margin="12,0,0,0" Content="Aplicar"
-                                Command="{Binding Appearance.ApplyCustomAccentCommand}"
-                                AutomationProperties.Name="Aplicar cor personalizada"
-                                Style="{DynamicResource PrimaryButtonStyle}" />
-                        <TextBox Text="{Binding Appearance.CustomAccentHex, UpdateSourceTrigger=PropertyChanged}"
-                                 Tag="Exemplo: #0067C0"
-                                 AutomationProperties.Name="Código hexadecimal da cor"
-                                 Style="{DynamicResource SettingsTextBoxStyle}" />
+                    <DockPanel Style="{StaticResource SettingRowStyle}">
+                        <ListBox DockPanel.Dock="Right" Margin="16,0,0,0" VerticalAlignment="Center"
+                                 ItemsSource="{Binding Appearance.AvailableModes}"
+                                 SelectedItem="{Binding Appearance.SelectedMode, Mode=TwoWay}"
+                                 ItemTemplate="{StaticResource DisplayTextTemplate}"
+                                 AutomationProperties.Name="Tema do aplicativo"
+                                 Style="{DynamicResource SegmentedListBoxStyle}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Tema" Style="{DynamicResource LabelTextStyle}" />
+                            <TextBlock Text="Claro, escuro ou igual ao Windows." Style="{DynamicResource OptionalCaptionTextStyle}" />
+                        </StackPanel>
                     </DockPanel>
-                    <TextBlock Margin="0,8,0,0" Text="{Binding Appearance.ValidationMessage}"
-                               Foreground="{DynamicResource ErrorBrush}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                    <Button Margin="0,8,0,0" HorizontalAlignment="Left" Content="Restaurar aparência padrão"
+
+                    <Rectangle Style="{StaticResource RowSeparatorStyle}" />
+
+                    <DockPanel Style="{StaticResource SettingRowStyle}">
+                        <ComboBox ItemsSource="{Binding Appearance.AccentOptions}"
+                                  SelectedItem="{Binding Appearance.SelectedAccent, Mode=TwoWay}"
+                                  DisplayMemberPath="Name"
+                                  AutomationProperties.Name="Cor de destaque predefinida"
+                                  Style="{StaticResource RowComboBoxStyle}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Cor de destaque" Style="{DynamicResource LabelTextStyle}" />
+                            <TextBlock Text="Usada no botão principal, na seleção e no foco." Style="{DynamicResource OptionalCaptionTextStyle}" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <Rectangle Style="{StaticResource RowSeparatorStyle}" />
+
+                    <DockPanel Style="{StaticResource SettingRowStyle}">
+                        <StackPanel DockPanel.Dock="Right" Margin="16,0,0,0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBox Width="140" Text="{Binding Appearance.CustomAccentHex, UpdateSourceTrigger=PropertyChanged}"
+                                     Tag="#0071E3"
+                                     AutomationProperties.Name="Código hexadecimal da cor"
+                                     Style="{DynamicResource SettingsTextBoxStyle}" />
+                            <Button Margin="8,0,0,0" Content="Aplicar"
+                                    Command="{Binding Appearance.ApplyCustomAccentCommand}"
+                                    AutomationProperties.Name="Aplicar cor personalizada"
+                                    Style="{DynamicResource SecondaryButtonStyle}" />
+                        </StackPanel>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Cor personalizada" Style="{DynamicResource LabelTextStyle}" />
+                            <TextBlock Text="{Binding Appearance.ValidationMessage}" Foreground="{DynamicResource ErrorBrush}" Style="{DynamicResource OptionalCaptionTextStyle}" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <Button Margin="0,10,0,0" HorizontalAlignment="Left" Content="Restaurar aparência padrão"
                             Command="{Binding Appearance.RestoreDefaultsCommand}"
-                            Style="{DynamicResource SecondaryButtonStyle}" />
+                            Style="{DynamicResource PlainButtonStyle}" />
                 </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Agendamento" Style="{DynamicResource SettingsGroupStyle}">
                 <StackPanel>
-                    <TextBlock Text="Frequência" Style="{DynamicResource LabelTextStyle}" />
-                    <ComboBox Margin="0,8,0,0" ItemsSource="{Binding Schedule.AvailableModes}"
-                              SelectedItem="{Binding Schedule.Mode, Mode=TwoWay}"
-                              ItemTemplate="{StaticResource DisplayTextTemplate}"
-                              AutomationProperties.Name="Frequência do agendamento"
-                              Style="{DynamicResource SettingsComboBoxStyle}" />
-                    <TextBlock Margin="0,16,0,0" Text="Intervalo em horas (frequência por intervalo)" Style="{DynamicResource LabelTextStyle}" />
-                    <ComboBox Margin="0,8,0,0" ItemsSource="{Binding Schedule.AvailableIntervals}"
-                              SelectedItem="{Binding Schedule.IntervalHours, Mode=TwoWay}"
-                              AutomationProperties.Name="Intervalo em horas"
-                              Style="{DynamicResource SettingsComboBoxStyle}" />
-                    <TextBlock Margin="0,16,0,0" Text="Dia da semana (frequência semanal)" Style="{DynamicResource LabelTextStyle}" />
-                    <ComboBox Margin="0,8,0,0" ItemsSource="{Binding Schedule.AvailableDays}"
-                              SelectedItem="{Binding Schedule.DayOfWeek, Mode=TwoWay}"
-                              ItemTemplate="{StaticResource DisplayTextTemplate}"
-                              AutomationProperties.Name="Dia do agendamento semanal"
-                              Style="{DynamicResource SettingsComboBoxStyle}" />
-                    <TextBlock Margin="0,16,0,0" Text="O que atualizar" Style="{DynamicResource LabelTextStyle}" />
-                    <ComboBox Margin="0,8,0,0" ItemsSource="{Binding Schedule.AvailableScopes}"
-                              SelectedItem="{Binding Schedule.Scope, Mode=TwoWay}"
-                              ItemTemplate="{StaticResource DisplayTextTemplate}"
-                              AutomationProperties.Name="Escopo do agendamento"
-                              Style="{DynamicResource SettingsComboBoxStyle}" />
-                    <TextBlock Margin="0,10,0,0" Text="A tarefa do Agendador de Tarefas usa a sua conta e só executa o próprio App Updater." TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                    <WrapPanel Margin="0,16,0,-8" Style="{DynamicResource ActionBarStyle}">
-                        <Button Margin="{StaticResource ActionItemMargin}" Content="Salvar agendamento" Command="{Binding Schedule.SaveCommand}" Style="{DynamicResource PrimaryButtonStyle}" />
-                        <Button Margin="{StaticResource ActionItemMargin}" Content="Desativar" Command="{Binding Schedule.DisableCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
-                        <Button Margin="{StaticResource ActionItemMargin}" Content="Remover" Command="{Binding Schedule.RemoveCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
-                    </WrapPanel>
-                    <TextBlock Margin="0,10,0,0" Text="{Binding Schedule.StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                    <DockPanel Style="{StaticResource SettingRowStyle}">
+                        <ComboBox ItemsSource="{Binding Schedule.AvailableModes}"
+                                  SelectedItem="{Binding Schedule.Mode, Mode=TwoWay}"
+                                  ItemTemplate="{StaticResource DisplayTextTemplate}"
+                                  AutomationProperties.Name="Frequência do agendamento"
+                                  Style="{StaticResource RowComboBoxStyle}" />
+                        <TextBlock VerticalAlignment="Center" Text="Frequência" Style="{DynamicResource LabelTextStyle}" />
+                    </DockPanel>
+                    <Rectangle Style="{StaticResource RowSeparatorStyle}" />
+                    <DockPanel Style="{StaticResource SettingRowStyle}">
+                        <ComboBox ItemsSource="{Binding Schedule.AvailableIntervals}"
+                                  SelectedItem="{Binding Schedule.IntervalHours, Mode=TwoWay}"
+                                  ItemStringFormat="{}{0} h"
+                                  AutomationProperties.Name="Intervalo em horas"
+                                  Style="{StaticResource RowComboBoxStyle}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Intervalo" Style="{DynamicResource LabelTextStyle}" />
+                            <TextBlock Text="Para a frequência por intervalo de horas." Style="{DynamicResource OptionalCaptionTextStyle}" />
+                        </StackPanel>
+                    </DockPanel>
+                    <Rectangle Style="{StaticResource RowSeparatorStyle}" />
+                    <DockPanel Style="{StaticResource SettingRowStyle}">
+                        <ComboBox ItemsSource="{Binding Schedule.AvailableDays}"
+                                  SelectedItem="{Binding Schedule.DayOfWeek, Mode=TwoWay}"
+                                  ItemTemplate="{StaticResource DisplayTextTemplate}"
+                                  AutomationProperties.Name="Dia do agendamento semanal"
+                                  Style="{StaticResource RowComboBoxStyle}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Dia da semana" Style="{DynamicResource LabelTextStyle}" />
+                            <TextBlock Text="Para a frequência semanal." Style="{DynamicResource OptionalCaptionTextStyle}" />
+                        </StackPanel>
+                    </DockPanel>
+                    <Rectangle Style="{StaticResource RowSeparatorStyle}" />
+                    <DockPanel Style="{StaticResource SettingRowStyle}">
+                        <ComboBox ItemsSource="{Binding Schedule.AvailableScopes}"
+                                  SelectedItem="{Binding Schedule.Scope, Mode=TwoWay}"
+                                  ItemTemplate="{StaticResource DisplayTextTemplate}"
+                                  AutomationProperties.Name="Escopo do agendamento"
+                                  Style="{StaticResource RowComboBoxStyle}" />
+                        <TextBlock VerticalAlignment="Center" Text="O que atualizar" Style="{DynamicResource LabelTextStyle}" />
+                    </DockPanel>
+
+                    <DockPanel Margin="0,12,0,0">
+                        <WrapPanel DockPanel.Dock="Right" Style="{DynamicResource ActionBarStyle}">
+                            <Button Margin="{StaticResource ActionItemMargin}" Content="Remover" Command="{Binding Schedule.RemoveCommand}" Style="{DynamicResource PlainButtonStyle}" />
+                            <Button Margin="{StaticResource ActionItemMargin}" Content="Desativar" Command="{Binding Schedule.DisableCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
+                            <Button Margin="0,0,0,8" Content="Salvar agendamento" Command="{Binding Schedule.SaveCommand}" Style="{DynamicResource PrimaryButtonStyle}" />
+                        </WrapPanel>
+                        <TextBlock VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap"
+                                   Text="Usa a sua conta e só executa o próprio App Updater."
+                                   Style="{DynamicResource CaptionTextStyle}" />
+                    </DockPanel>
+                    <TextBlock Text="{Binding Schedule.StatusMessage}" Style="{DynamicResource OptionalCaptionTextStyle}" />
                 </StackPanel>
             </GroupBox>
 
-            <GroupBox Header="Inicialização" Style="{DynamicResource SettingsGroupStyle}">
+            <GroupBox Header="Inicialização e bandeja" Style="{DynamicResource SettingsGroupStyle}">
                 <StackPanel>
                     <CheckBox IsChecked="{Binding Startup.IsEnabled, Mode=TwoWay}"
-                              Style="{DynamicResource CheckBoxStyle}"
-                              Content="Iniciar o aplicativo com o Windows" />
-                    <TextBlock Margin="0,8,0,0"
-                               Text="O aplicativo abre minimizado na área de notificação, sem mostrar a janela. Desligado por padrão; usa uma tarefa visível e removível do Agendador de Tarefas."
-                               TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                    <Button Margin="0,14,0,0" HorizontalAlignment="Left" Content="Aplicar inicialização"
-                            Command="{Binding Startup.ApplyCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
-                    <TextBlock Margin="0,8,0,0" Text="{Binding Startup.StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                </StackPanel>
-            </GroupBox>
+                              Command="{Binding Startup.ApplyCommand}"
+                              Style="{DynamicResource ToggleSwitchStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Iniciar com o Windows" Style="{DynamicResource LabelTextStyle}" />
+                            <TextBlock Text="Abre minimizado na área de notificação, sem mostrar a janela."
+                                       Style="{DynamicResource OptionalCaptionTextStyle}" />
+                        </StackPanel>
+                    </CheckBox>
+                    <TextBlock Text="{Binding Startup.StatusMessage}" Style="{DynamicResource OptionalCaptionTextStyle}" />
 
-            <GroupBox Header="Área de notificação" Style="{DynamicResource SettingsGroupStyle}">
-                <StackPanel>
+                    <Rectangle Style="{StaticResource RowSeparatorStyle}" />
+
                     <CheckBox IsChecked="{Binding Tray.MinimizeToTray, Mode=TwoWay}"
-                              Style="{DynamicResource CheckBoxStyle}"
-                              Content="Minimizar para a bandeja ao fechar" />
-                    <TextBlock Margin="0,8,0,0"
-                               Text="O menu da bandeja permite abrir, verificar atualizações, consultar o status e sair."
-                               TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                    <Button Margin="0,14,0,0" HorizontalAlignment="Left" Content="Aplicar bandeja"
-                            Command="{Binding Tray.ApplyCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
-                    <TextBlock Margin="0,8,0,0" Text="{Binding Tray.StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                              Command="{Binding Tray.ApplyCommand}"
+                              Style="{DynamicResource ToggleSwitchStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Minimizar para a bandeja ao fechar" Style="{DynamicResource LabelTextStyle}" />
+                            <TextBlock Text="Fechar a janela só esconde o app. Use Sair no menu da bandeja para encerrar."
+                                       Style="{DynamicResource OptionalCaptionTextStyle}" />
+                        </StackPanel>
+                    </CheckBox>
                 </StackPanel>
             </GroupBox>
 
             <GroupBox Header="Aplicativos excluídos da atualização" Style="{DynamicResource SettingsGroupStyle}">
                 <StackPanel>
-                    <TextBlock Text="Os aplicativos desta lista não recebem atualizações, nem manuais nem agendadas. Para voltar a atualizar um deles, remova a exclusão aqui."
+                    <TextBlock Text="Não recebem atualizações, nem manuais nem agendadas."
                                TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
-                    <Border Margin="0,12,0,0" Padding="12" Background="{DynamicResource WindowBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8">
-                        <StackPanel>
-                            <TextBlock Text="Nenhum aplicativo excluído da atualização.">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionTextStyle}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding ExcludedPackages.HasExcludedPackages}" Value="False">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                            <ItemsControl ItemsSource="{Binding ExcludedPackages.ExcludedPackages}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <DockPanel Margin="0,6,0,6">
-                                            <Button DockPanel.Dock="Right" Content="Remover exclusão"
-                                                    Command="{Binding DataContext.ExcludedPackages.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                    CommandParameter="{Binding}"
-                                                    AutomationProperties.Name="Remover exclusão do aplicativo"
-                                                    Style="{DynamicResource SecondaryButtonStyle}" />
-                                            <StackPanel Margin="0,0,12,0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}">
-                                                    <Run Text="{Binding Id, Mode=OneWay}" /> • Origem: <Run Text="{Binding Source, Mode=OneWay}" />
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </DockPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </Border>
+                    <TextBlock Margin="0,10,0,0" Text="Nenhum aplicativo excluído.">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ExcludedPackages.HasExcludedPackages}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <ItemsControl Margin="0,4,0,0" ItemsSource="{Binding ExcludedPackages.ExcludedPackages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <Rectangle Style="{StaticResource RowSeparatorStyle}" Margin="0,6" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Content="Remover exclusão"
+                                                Command="{Binding DataContext.ExcludedPackages.RemoveCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                AutomationProperties.Name="Remover exclusão do aplicativo"
+                                                Style="{DynamicResource PlainButtonStyle}" />
+                                        <StackPanel Margin="0,0,12,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}">
+                                                <Run Text="{Binding Id, Mode=OneWay}" /> • <Run Text="{Binding Source, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </GroupBox>
         </StackPanel>

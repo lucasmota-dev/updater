@@ -21,11 +21,7 @@ public sealed partial class WingetService : IPackageUpdateService
     /// <summary>Instaladores grandes (IDEs, navegadores, drivers) podem levar vários minutos.</summary>
     private static readonly TimeSpan InstallTimeout = TimeSpan.FromMinutes(30);
 
-    // Códigos de saída tratados como "precisa de administrador" e "precisa de interação",
-    // para mostrar uma mensagem mais útil do que o texto bruto do WinGet.
-    private const int AccessDeniedExitCode = 5;
-    private const int InstallerRequiresElevationExitCode = unchecked((int)0x8A15002B);
-    private const int InstallerRequiresInteractionExitCode = unchecked((int)0x8A150011);
+    // Os códigos de saída do WinGet e as mensagens ficam em WingetErrorCodes.
     private const int UserCanceledUacError = 1223;
 
     private readonly IProcessExecutor _processExecutor;
@@ -370,8 +366,13 @@ public sealed partial class WingetService : IPackageUpdateService
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeout.CancelAfter(InstallTimeout);
             await process.WaitForExitAsync(timeout.Token);
-            return process.ExitCode == 0
-                ? (PackageUpdateStatus.Succeeded, "Concluído como administrador.", process.ExitCode)
+            if (process.ExitCode == 0)
+            {
+                return (PackageUpdateStatus.Succeeded, "Concluído como administrador.", process.ExitCode);
+            }
+
+            return WingetErrorCodes.Describe(process.ExitCode, command == "install" ? "instalação" : "atualização") is { } known
+                ? (known.Status, known.Message, process.ExitCode)
                 : (PackageUpdateStatus.Failed, $"O WinGet terminou com o código 0x{process.ExitCode:X8}, mesmo como administrador.", process.ExitCode);
         }
         catch (System.ComponentModel.Win32Exception exception) when (exception.NativeErrorCode == UserCanceledUacError)
@@ -387,31 +388,29 @@ public sealed partial class WingetService : IPackageUpdateService
     /// <summary>
     /// Traduz uma falha do WinGet em estado e mensagem úteis.
     /// <list type="bullet">
-    /// <item>Códigos de acesso negado/exige elevação → <see cref="PackageUpdateStatus.RequiresElevation"/>
-    /// (a tela oferece "Tentar como administrador").</item>
-    /// <item>Texto citando "admin"/"elevat": se o app <b>já</b> está elevado, o problema é o contrário — o
-    /// instalador não aceita rodar como administrador (caso de Discord e Spotify).</item>
+    /// <item>Primeiro, pelo código de saída oficial (<see cref="WingetErrorCodes"/>).</item>
+    /// <item>Sem código conhecido, pelo texto: se cita "admin"/"elevat" e o app <b>já</b> está elevado, o
+    /// instalador recusa rodar como administrador; se o app não está elevado, ele exige administrador.</item>
     /// </list>
     /// </summary>
     private (PackageUpdateStatus Status, string Message) ClassifyFailure(ProcessExecutionResult result, string operation)
     {
+        if (WingetErrorCodes.Describe(result.ExitCode, operation) is { } known)
+        {
+            return known;
+        }
+
         var combinedOutput = $"{result.StandardError} {result.StandardOutput}".Trim();
         var mentionsAdmin = combinedOutput.Contains("admin", StringComparison.OrdinalIgnoreCase)
             || combinedOutput.Contains("elevat", StringComparison.OrdinalIgnoreCase);
-
-        if (result.ExitCode is AccessDeniedExitCode or InstallerRequiresElevationExitCode || (mentionsAdmin && !_isElevated))
-        {
-            return (PackageUpdateStatus.RequiresElevation, $"A {operation} exige privilégios de administrador.");
-        }
-
         if (mentionsAdmin)
         {
-            return (PackageUpdateStatus.Failed,
-                "Este instalador não aceita rodar como administrador. " + ElevationGuard.ElevationAdvice);
+            return _isElevated
+                ? (PackageUpdateStatus.Failed, "Este instalador não aceita rodar como administrador. " + ElevationGuard.ElevationAdvice)
+                : (PackageUpdateStatus.RequiresElevation, $"A {operation} exige permissão de administrador.");
         }
 
-        if (result.ExitCode is InstallerRequiresInteractionExitCode
-            || combinedOutput.Contains("interactive", StringComparison.OrdinalIgnoreCase))
+        if (combinedOutput.Contains("interactive", StringComparison.OrdinalIgnoreCase))
         {
             return (PackageUpdateStatus.RequiresInteraction, "O instalador exige interação do usuário e não pôde ser executado em modo silencioso.");
         }

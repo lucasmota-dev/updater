@@ -11,7 +11,9 @@
         MinHeight="480"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBackgroundBrush}"
-        Foreground="{DynamicResource PrimaryTextBrush}">
+        Foreground="{DynamicResource PrimaryTextBrush}"
+        FontFamily="{DynamicResource AppFontFamily}"
+        FontSize="13">
     <!--
         Estrutura da janela:
         ┌────────────────────────────────────────────┐
@@ -38,7 +40,7 @@
 
     <DockPanel>
         <!-- Barra de status -->
-        <Border DockPanel.Dock="Bottom" Padding="20,6" Background="{DynamicResource SurfaceBrush}"
+        <Border DockPanel.Dock="Bottom" Padding="16,4" Background="{DynamicResource WindowBackgroundBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Style="{DynamicResource CaptionTextStyle}">
@@ -51,19 +53,19 @@
             </DockPanel>
         </Border>
 
-        <Grid Margin="16,16,20,16">
+        <Grid Margin="12,12,16,12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <!-- Faixa de aviso (resultado de operações, nova versão etc.) -->
-            <Border Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,16" Padding="14,10"
+            <Border Grid.Row="0" Grid.ColumnSpan="3" Margin="0,0,0,12" Padding="12,8"
                     Background="{DynamicResource SubtleAccentBrush}" CornerRadius="10">
                 <Border.Style>
                     <Style TargetType="Border">
@@ -76,9 +78,9 @@
                     </Style>
                 </Border.Style>
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="Fechar" Command="{Binding DismissNotificationCommand}"
+                    <Button DockPanel.Dock="Right" VerticalAlignment="Center" Content="Fechar" Command="{Binding DismissNotificationCommand}"
                             AutomationProperties.Name="Fechar aviso" Style="{DynamicResource SecondaryButtonStyle}" />
-                    <Button DockPanel.Dock="Right" Margin="0,0,8,0" Command="{Binding OpenNotificationLinkCommand}"
+                    <Button DockPanel.Dock="Right" Margin="0,0,8,0" VerticalAlignment="Center" Command="{Binding OpenNotificationLinkCommand}"
                             Content="{Binding Notifications.Current.ActionLabel}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
@@ -92,19 +94,19 @@
                     </Button>
                     <StackPanel Margin="0,0,12,0">
                         <TextBlock Text="{Binding Notifications.Current.Title}" FontWeight="SemiBold" />
-                        <TextBlock Margin="0,4,0,0" Text="{Binding Notifications.Current.Message}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                        <TextBlock Margin="0,2,0,0" Text="{Binding Notifications.Current.Message}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
                     </StackPanel>
                 </DockPanel>
             </Border>
 
-            <!-- Menu lateral: 200 px expandido, só ícones quando recolhido -->
+            <!-- Menu lateral: 184 px expandido, só ícones quando recolhido -->
             <DockPanel Grid.Row="1" Grid.Column="0">
                 <DockPanel.Style>
                     <Style TargetType="DockPanel">
-                        <Setter Property="Width" Value="200" />
+                        <Setter Property="Width" Value="184" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsNavigationCollapsed}" Value="True">
-                                <Setter Property="Width" Value="56" />
+                                <Setter Property="Width" Value="46" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -131,8 +133,8 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Width="28" Text="{Binding Glyph}" Style="{StaticResource IconTextStyle}" />
-                                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Text="{Binding Title}">
+                                <TextBlock Width="24" FontSize="15" Text="{Binding Glyph}" Style="{StaticResource IconTextStyle}" />
+                                <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Text="{Binding Title}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Style.Triggers>
@@ -149,11 +151,10 @@
                 </ListBox>
             </DockPanel>
 
-            <!-- Página selecionada -->
-            <Border Grid.Row="1" Grid.Column="2" Padding="28" Background="{DynamicResource SurfaceBrush}"
-                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12">
-                <ContentControl Content="{Binding SelectedPage}" Focusable="False" AutomationProperties.Name="Conteúdo da página" />
-            </Border>
+            <!-- Página selecionada: direto sobre o fundo da janela (surface). Só as listas e os
+                 grupos dentro dela são cartões (surface-raised), como pede o design system. -->
+            <ContentControl Grid.Row="1" Grid.Column="2" Margin="8,4,0,0"
+                            Content="{Binding SelectedPage}" Focusable="False" AutomationProperties.Name="Conteúdo da página" />
         </Grid>
     </DockPanel>
 </Window>

@@ -67,7 +67,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             _notifications.Publish(new Models.AppNotification(
                 Models.NotificationKind.Erro,
                 "O App Updater está rodando como administrador",
-                "Instaladores por usuário (como Discord e Spotify) podem se recusar a instalar. " + ElevationGuard.ElevationAdvice));
+                "Alguns instaladores (como o do Spotify) recusam instalar assim. " + ElevationGuard.ElevationAdvice));
         }
 
         _ = startup.RefreshTaskAsync();

@@ -34,7 +34,7 @@ public sealed class AppearanceSettingsViewModel : ViewModelBase
     public IReadOnlyList<AccentOption> AccentOptions { get; } =
     [
         SystemAccent,
-        new("Azul", "#0067C0"),
+        new("Azul", "#0071E3"),
         new("Roxo", "#744DA9"),
         new("Verde", "#107C10"),
         new("Laranja", "#CA5010"),
