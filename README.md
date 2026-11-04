@@ -80,7 +80,7 @@ O aplicativo oferece:
 ## Versões e releases
 
 - **Versão:** `yyyy.MM.dd.NN`, a data do lançamento (horário de Brasília) mais um contador do dia. Exemplos: `2026.10.28.01`, `2026.10.28.02`. A tag Git é `v2026.10.28.01`. Nunca se repete.
-- **Publicar:** no GitHub, `Actions > Release > Run workflow` (branch `main`). O workflow calcula a versão (`tools/Get-NextVersion.ps1`), compila, testa, gera `Atualizador.exe`, `Atualizador-Setup.exe` e `SHA256SUMS.txt` e cria a release com notas automáticas.
+- **Publicar:** faça push no `main`. Quando o CI termina com sucesso, o workflow `Release` dispara sozinho (também é possível executá-lo em `Actions > Release > Run workflow`, branch `main`). O workflow calcula a versão (`tools/Get-NextVersion.ps1`), compila, testa, gera `Atualizador.exe`, `Atualizador-Setup.exe` e `SHA256SUMS.txt` e cria a release com notas automáticas.
 - **CI:** `ci.yml` compila e testa em todo PR e push no `main`, e toda segunda-feira às 09:00 UTC para detectar quebras de SDK ou dependências.
 - **Dependências:** o Dependabot abre PRs semanais para NuGet e GitHub Actions.
 - **Aviso no aplicativo:** ao abrir, o app consulta a última release (`api.github.com`) e, se houver versão mais nova, mostra um aviso com botão para abrir a página da release. A verificação é silenciosa em caso de falha e não ocorre em compilações locais (versão `0.0.0.0`). Requer repositório público.

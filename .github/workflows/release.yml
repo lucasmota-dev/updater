@@ -1,6 +1,7 @@
 name: Release
 
-# Disparo manual: Actions > Release > Run workflow (na branch main).
+# Disparo automático: quando o CI termina com sucesso após um push no main.
+# Disparo manual (opcional): Actions > Release > Run workflow (na branch main).
 # A versão é calculada no formato yyyy.MM.dd.NN (NN reinicia a cada dia) e vira a tag vyyyy.MM.dd.NN.
 #
 # Estrutura (privilégio mínimo):
@@ -10,6 +11,10 @@ name: Release
 #
 # Actions de terceiros ficam fixadas por SHA de commit (a tag está no comentário). O Dependabot atualiza os SHAs.
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions: {}
@@ -18,9 +23,19 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+env:
+  # No disparo automático, github.sha aponta para o main atual; o commit validado pelo CI é o head_sha do evento.
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
   gate:
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       checks: read
@@ -31,10 +46,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # O job do CI (.github/workflows/ci.yml) chama-se build-and-test. 'filter=latest' devolve a execução mais recente.
-          conclusion=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?check_name=build-and-test&filter=latest" --jq '.check_runs[0].conclusion // "ausente"')
-          echo "Conclusão do CI em $GITHUB_SHA: $conclusion"
+          conclusion=$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_SHA/check-runs?check_name=build-and-test&filter=latest" --jq '.check_runs[0].conclusion // "ausente"')
+          echo "Conclusão do CI em $RELEASE_SHA: $conclusion"
           if [ "$conclusion" != "success" ]; then
-            echo "::error::O CI (build-and-test) não está verde para o commit $GITHUB_SHA (estado: $conclusion). Aguarde o CI terminar com sucesso e execute o Release novamente."
+            echo "::error::O CI (build-and-test) não está verde para o commit $RELEASE_SHA (estado: $conclusion). Aguarde o CI terminar com sucesso e execute o Release novamente."
             exit 1
           fi
 
@@ -53,6 +68,7 @@ jobs:
       - name: Baixar o código e as tags
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ env.RELEASE_SHA }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -213,7 +229,7 @@ jobs:
             release/Atualizador.exe \
             release/Atualizador-Setup.exe \
             release/SHA256SUMS.txt \
-            --target "$GITHUB_SHA" \
+            --target "$RELEASE_SHA" \
             --title "Atualizador Windows $VERSION" \
             --generate-notes \
             --latest
