@@ -186,24 +186,49 @@ public sealed class AppUpdateViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        // Aviso visível em qualquer página: sem ele, o download parece uma janela parada.
         StatusMessage = $"Baixando a versão {newVersion}…";
+        PublishUpdateProgress($"Baixando a versão {newVersion} do App Updater…");
         var installerPath = await new AppSelfUpdateService().DownloadInstallerAsync(release, cancellationToken);
-
-        // Revalida: uma atualização de pacotes pode ter começado durante o download.
-        // Janela escondida (iniciado com o Windows ou minimizado na bandeja): reabre escondido também.
-        var reopenMinimized = System.Windows.Application.Current?.MainWindow is { IsVisible: false };
-        if (installerPath is null
-            || _isPackageWorkRunning()
-            || !AppSelfUpdateService.TryStartInstaller(installerPath, reopenMinimized))
+        if (installerPath is null)
         {
             StatusMessage = $"Não foi possível baixar ou validar o instalador da versão {newVersion}.";
-            PublishReleaseNotification(release, isManual);
+            PublishReleaseNotification(release, isManual: true);
+            return;
+        }
+
+        // Janela escondida (iniciado com o Windows ou na bandeja): instala e reabre sem aparecer.
+        // Janela visível: avisa que vai fechar, com contagem regressiva, e mostra o progresso do instalador.
+        var isWindowHidden = System.Windows.Application.Current?.MainWindow is { IsVisible: false };
+        if (!isWindowHidden)
+        {
+            for (var seconds = CloseCountdownSeconds; seconds > 0; seconds--)
+            {
+                PublishUpdateProgress(
+                    $"A versão {newVersion} foi baixada. O App Updater vai fechar e abrir de novo na versão nova em {seconds} s.");
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            }
+        }
+
+        // Revalida: uma atualização de pacotes pode ter começado durante o download ou a contagem.
+        if (_isPackageWorkRunning()
+            || !AppSelfUpdateService.TryStartInstaller(installerPath, reopenMinimized: isWindowHidden, showProgress: !isWindowHidden))
+        {
+            StatusMessage = $"A instalação da versão {newVersion} foi adiada. Busque de novo quando as atualizações terminarem.";
+            PublishReleaseNotification(release, isManual: true);
             return;
         }
 
         StatusMessage = $"Instalando a versão {newVersion}…";
         ShutdownRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Segundos de aviso antes de fechar o app para instalar a versão nova.</summary>
+    private const int CloseCountdownSeconds = 3;
+
+    /// <summary>Faixa do topo durante a atualização do próprio app (substitui qualquer outro aviso).</summary>
+    private void PublishUpdateProgress(string message) =>
+        _notifications.Publish(new AppNotification(NotificationKind.Informacao, "Atualizando o App Updater", message));
 
     /// <summary>
     /// Mostra o aviso com o link da release. Na verificação automática não substitui um aviso

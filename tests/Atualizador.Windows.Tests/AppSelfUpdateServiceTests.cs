@@ -31,6 +31,28 @@ public sealed class AppSelfUpdateServiceTests
     }
 
     [TestMethod]
+    public void BuildInstallerArguments_ShowsProgressOnlyWhenTheWindowWasVisible()
+    {
+        var visible = AppSelfUpdateService.BuildInstallerArguments(reopenMinimized: false, showProgress: true);
+        var hidden = AppSelfUpdateService.BuildInstallerArguments(reopenMinimized: true, showProgress: false);
+
+        // Janela visível: progresso do instalador na tela, sem perguntas, e reabre normalmente.
+        CollectionAssert.Contains(visible.ToArray(), "/SILENT");
+        CollectionAssert.DoesNotContain(visible.ToArray(), "/VERYSILENT");
+        CollectionAssert.DoesNotContain(visible.ToArray(), "/MINIMIZED=1");
+
+        // Na bandeja: tudo invisível e reabre na bandeja.
+        CollectionAssert.Contains(hidden.ToArray(), "/VERYSILENT");
+        CollectionAssert.Contains(hidden.ToArray(), "/MINIMIZED=1");
+
+        foreach (var arguments in new[] { visible, hidden })
+        {
+            CollectionAssert.Contains(arguments.ToArray(), "/AUTOUPDATE=1");
+            CollectionAssert.Contains(arguments.ToArray(), "/SUPPRESSMSGBOXES");
+        }
+    }
+
+    [TestMethod]
     public void TryGetChecksum_FindsInstallerLine()
     {
         var hash = new string('a', 64);

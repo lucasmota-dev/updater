@@ -169,25 +169,24 @@ public sealed class AppSelfUpdateService(HttpClient? httpClient = null, string? 
     }
 
     /// <summary>
-    /// Inicia o instalador por usuário em modo silencioso. /AUTOUPDATE=1 faz o instalador
-    /// abrir o aplicativo de novo ao terminar; com <paramref name="reopenMinimized"/>, ele reabre
-    /// só na área de notificação (o app estava escondido e não deve aparecer de repente).
-    /// O chamador deve encerrar o aplicativo em seguida.
+    /// Inicia o instalador por usuário. /AUTOUPDATE=1 faz o instalador abrir o aplicativo de novo
+    /// ao terminar. O chamador deve encerrar o aplicativo logo em seguida.
     /// </summary>
-    public static bool TryStartInstaller(string installerPath, bool reopenMinimized = false)
+    /// <param name="reopenMinimized">Reabre só na área de notificação (o app estava escondido).</param>
+    /// <param name="showProgress">
+    /// Mostra a janela de progresso do instalador (/SILENT, sem perguntas) em vez de instalar de forma
+    /// invisível (/VERYSILENT). Sem ela, entre o app fechar e a versão nova abrir não aparece nada,
+    /// e parece que o aplicativo travou.
+    /// </param>
+    public static bool TryStartInstaller(string installerPath, bool reopenMinimized = false, bool showProgress = false)
     {
         var startInfo = new ProcessStartInfo(installerPath)
         {
             UseShellExecute = false,
             WorkingDirectory = Path.GetDirectoryName(installerPath) ?? string.Empty
         };
-        var arguments = new List<string> { "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/AUTOUPDATE=1" };
-        if (reopenMinimized)
-        {
-            arguments.Add("/MINIMIZED=1");
-        }
 
-        foreach (var argument in arguments)
+        foreach (var argument in BuildInstallerArguments(reopenMinimized, showProgress))
         {
             startInfo.ArgumentList.Add(argument);
         }
@@ -201,6 +200,25 @@ public sealed class AppSelfUpdateService(HttpClient? httpClient = null, string? 
         {
             return false;
         }
+    }
+
+    /// <summary>Argumentos fixos do Inno Setup para a atualização automática.</summary>
+    public static IReadOnlyList<string> BuildInstallerArguments(bool reopenMinimized, bool showProgress)
+    {
+        var arguments = new List<string>
+        {
+            showProgress ? "/SILENT" : "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/CLOSEAPPLICATIONS",
+            "/AUTOUPDATE=1"
+        };
+        if (reopenMinimized)
+        {
+            arguments.Add("/MINIMIZED=1");
+        }
+
+        return arguments;
     }
 
     /// <summary>Baixa um arquivo de texto pequeno (SHA256SUMS.txt). Retorna null se falhar ou passar do limite.</summary>

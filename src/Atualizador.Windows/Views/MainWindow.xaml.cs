@@ -19,15 +19,15 @@ public partial class MainWindow : Window, IDisposable
         _viewModel = new MainWindowViewModel();
         DataContext = _viewModel;
 
-        // O instalador da nova versão substitui o executável. Shutdown encerra de verdade,
-        // ignorando a opção "minimizar para a bandeja ao fechar".
-        _viewModel.AppUpdate.ShutdownRequested += (_, _) => System.Windows.Application.Current.Shutdown();
-
         _trayIconService = new TrayIconService(
             this,
             _viewModel.UpdatesPage,
             _viewModel.Notifications,
             () => _viewModel.TraySettings.MinimizeToTray);
+
+        // O instalador da nova versão substitui o executável: o app precisa sair rápido e de verdade,
+        // pelo mesmo caminho do "Sair" da bandeja (ignora "minimizar para a bandeja ao fechar").
+        _viewModel.AppUpdate.ShutdownRequested += (_, _) => _trayIconService.ExitApplication();
     }
 
     /// <summary>O handle da janela só existe a partir daqui; é quando a barra de título pode ser ajustada.</summary>

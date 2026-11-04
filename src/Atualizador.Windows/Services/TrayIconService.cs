@@ -79,9 +79,14 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private void ExitApplication()
+    /// <summary>
+    /// Encerra o app de verdade, ignorando "minimizar para a bandeja ao fechar". Usado pelo item
+    /// Sair e pela atualização automática. A janela é escondida primeiro, para sumir na hora.
+    /// </summary>
+    public void ExitApplication()
     {
         _isExiting = true;
+        _window.Hide();
         _window.Close();
 
         // Com --minimized a janela pode nunca ter sido exibida; nesse caso o Close não encerra o app sozinho.
