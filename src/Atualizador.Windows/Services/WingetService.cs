@@ -3,12 +3,35 @@ using Atualizador.Windows.Models;
 
 namespace Atualizador.Windows.Services;
 
-public sealed class WingetService : IPackageUpdateService
+/// <summary>
+/// Executa o <c>winget.exe</c> e converte a saída em modelos tipados.
+/// <para>Regras de segurança aplicadas em todas as chamadas:</para>
+/// <list type="bullet">
+/// <item>argumentos passados um a um (<c>ArgumentList</c>), nunca uma linha de comando montada com texto do usuário;</item>
+/// <item>atualização e instalação sempre por <c>--id</c> + <c>--exact</c> + <c>--source</c>, nunca pelo nome exibido;</item>
+/// <item>ID e origem validados por expressão regular antes de qualquer execução;</item>
+/// <item>somente a fonte <c>winget</c> é consultada (a Microsoft Store não é suportada).</item>
+/// </list>
+/// </summary>
+public sealed partial class WingetService : IPackageUpdateService
 {
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(45);
+    /// <summary>Consultas (versão, fontes, lista, pesquisa) costumam terminar em poucos segundos.</summary>
+    private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(45);
+
+    /// <summary>Instaladores grandes (IDEs, navegadores, drivers) podem levar vários minutos.</summary>
+    private static readonly TimeSpan InstallTimeout = TimeSpan.FromMinutes(30);
+
+    // Códigos de saída tratados como "precisa de administrador" e "precisa de interação",
+    // para mostrar uma mensagem mais útil do que o texto bruto do WinGet.
+    private const int AccessDeniedExitCode = 5;
+    private const int InstallerRequiresElevationExitCode = unchecked((int)0x8A15002B);
+    private const int InstallerRequiresInteractionExitCode = unchecked((int)0x8A150011);
+
     private readonly IProcessExecutor _processExecutor;
     private readonly IExecutableLocator _locator;
 
+    /// <param name="processExecutor">Executor de processos; os testes usam um falso para não tocar no sistema.</param>
+    /// <param name="locator">Localiza o <c>winget.exe</c>; os testes usam um falso.</param>
     public WingetService(
         IProcessExecutor? processExecutor = null,
         IExecutableLocator? locator = null)
@@ -17,6 +40,12 @@ public sealed class WingetService : IPackageUpdateService
         _locator = locator ?? new WingetLocator();
     }
 
+    /// <summary>
+    /// Lista os pacotes com atualização disponível na fonte <c>winget</c>.
+    /// Antes, confere se o WinGet responde (<c>--version</c>) e se as fontes podem ser lidas,
+    /// para dar uma mensagem de erro precisa em cada caso.
+    /// </summary>
+    /// <param name="includeUnknown">Inclui pacotes com versão desconhecida. Desligado por padrão, por segurança.</param>
     public async Task<WingetDiscoveryResult> DiscoverUpdatesAsync(
         bool includeUnknown = false,
         CancellationToken cancellationToken = default)
@@ -24,70 +53,69 @@ public sealed class WingetService : IPackageUpdateService
         var wingetPath = _locator.Locate();
         if (wingetPath is null)
         {
-            return Result(
+            return DiscoveryFailure(
                 WingetDiscoveryStatus.WinGetUnavailable,
                 "O WinGet não foi localizado. Instale ou repare o App Installer e tente novamente.");
         }
 
-        var versionResult = await ExecuteAsync(wingetPath, ["--version"], cancellationToken);
+        var versionResult = await ExecuteAsync(wingetPath, ["--version"], QueryTimeout, cancellationToken);
         if (!versionResult.Started || versionResult.Canceled || versionResult.TimedOut)
         {
-            return Result(
+            return DiscoveryFailure(
                 WingetDiscoveryStatus.ExecutionFailed,
                 versionResult.ErrorMessage ?? "Não foi possível iniciar o WinGet.",
                 versionResult.ExitCode);
         }
 
+        var wingetVersion = versionResult.StandardOutput.Trim();
         var sourceResult = await ExecuteAsync(
             wingetPath,
             ["source", "list", "--disable-interactivity"],
+            QueryTimeout,
             cancellationToken);
+        var sources = WingetSourceParser.Parse(sourceResult.StandardOutput);
         if (!sourceResult.Started || sourceResult.ExitCode != 0)
         {
-            return Result(
+            return DiscoveryFailure(
                 WingetDiscoveryStatus.SourceFailed,
                 "Não foi possível consultar as fontes do WinGet.",
                 sourceResult.ExitCode,
-                versionResult.StandardOutput.Trim(),
-                WingetSourceParser.Parse(sourceResult.StandardOutput));
+                wingetVersion,
+                sources);
         }
 
+        // "list --upgrade-available" é mais estável entre versões do WinGet do que "upgrade" sem argumentos.
         var arguments = new List<string> { "list", "--upgrade-available", "--source", "winget", "--disable-interactivity" };
         if (includeUnknown)
         {
             arguments.Add("--include-unknown");
         }
 
-        var updatesResult = await ExecuteAsync(wingetPath, arguments, cancellationToken);
+        var updatesResult = await ExecuteAsync(wingetPath, arguments, QueryTimeout, cancellationToken);
         if (!updatesResult.Started || updatesResult.Canceled || updatesResult.TimedOut)
         {
-            return Result(
+            return DiscoveryFailure(
                 WingetDiscoveryStatus.ExecutionFailed,
                 updatesResult.ErrorMessage ?? "Não foi possível descobrir as atualizações.",
                 updatesResult.ExitCode,
-                versionResult.StandardOutput.Trim(),
-                WingetSourceParser.Parse(sourceResult.StandardOutput));
+                wingetVersion,
+                sources);
         }
 
         var parsed = WingetOutputParser.ParseUpgradeList(updatesResult.StandardOutput);
-        var sources = WingetSourceParser.Parse(sourceResult.StandardOutput);
         var message = parsed.Packages.Count == 0
             ? "Nenhuma atualização disponível foi encontrada."
             : $"{parsed.Packages.Count} atualização(ões) encontrada(s).";
+
+        // Código de saída diferente de zero ou linhas ignoradas no parsing = resultado parcial.
         var status = updatesResult.ExitCode == 0 && parsed.Warnings.Count == 0
             ? parsed.Packages.Count == 0 ? WingetDiscoveryStatus.NoUpdates : WingetDiscoveryStatus.Success
             : WingetDiscoveryStatus.Partial;
 
-        return new(
-            status,
-            parsed.Packages,
-            sources,
-            versionResult.StandardOutput.Trim(),
-            message,
-            updatesResult.ExitCode,
-            parsed.Warnings);
+        return new(status, parsed.Packages, sources, wingetVersion, message, updatesResult.ExitCode, parsed.Warnings);
     }
 
+    /// <summary>Atualiza um único pacote em modo silencioso. Nunca usa <c>--all</c>.</summary>
     public async Task<PackageUpdateResult> UpgradeAsync(
         UpdatablePackage package,
         CancellationToken cancellationToken = default)
@@ -108,18 +136,11 @@ public sealed class WingetService : IPackageUpdateService
             return new(package, PackageUpdateStatus.Failed, "O WinGet não foi localizado.", null);
         }
 
-        var arguments = new[]
-        {
-            "upgrade",
-            "--id", package.Id,
-            "--exact",
-            "--source", package.Source,
-            "--silent",
-            "--accept-source-agreements",
-            "--accept-package-agreements",
-            "--disable-interactivity"
-        };
-        var processResult = await ExecuteAsync(wingetPath, arguments, cancellationToken);
+        var processResult = await ExecuteAsync(
+            wingetPath,
+            BuildPackageArguments("upgrade", package.Id, package.Source),
+            InstallTimeout,
+            cancellationToken);
 
         if (processResult.Canceled)
         {
@@ -141,6 +162,7 @@ public sealed class WingetService : IPackageUpdateService
             : new(package, PackageUpdateStatus.Failed, SummarizeError(processResult.StandardError), processResult.ExitCode);
     }
 
+    /// <summary>Pesquisa pacotes no catálogo. Exige ao menos 2 caracteres para evitar listas enormes.</summary>
     public async Task<WingetSearchResult> SearchAsync(
         string query,
         string source = "winget",
@@ -160,6 +182,7 @@ public sealed class WingetService : IPackageUpdateService
                 "O WinGet não foi localizado. Instale ou repare o App Installer e tente novamente.");
         }
 
+        // O termo vai como um único argumento: o WinGet o recebe literalmente, sem interpretação de shell.
         var arguments = new List<string> { "search", query.Trim(), "--disable-interactivity" };
         if (!string.IsNullOrWhiteSpace(source) && !source.Equals("Todas", StringComparison.OrdinalIgnoreCase))
         {
@@ -167,7 +190,7 @@ public sealed class WingetService : IPackageUpdateService
             arguments.Add(source);
         }
 
-        var result = await ExecuteAsync(wingetPath, arguments, cancellationToken);
+        var result = await ExecuteAsync(wingetPath, arguments, QueryTimeout, cancellationToken);
         if (!result.Started || result.Canceled || result.TimedOut)
         {
             return new(
@@ -178,22 +201,15 @@ public sealed class WingetService : IPackageUpdateService
         }
 
         var packages = WingetOutputParser.ParseSearchResults(result.StandardOutput, source);
-        if (packages.Count == 0)
-        {
-            return new(
-                WingetSearchStatus.NoPackagesFound,
-                [],
-                "Nenhum aplicativo foi encontrado para o termo informado.",
-                result.ExitCode);
-        }
-
-        return new(
-            WingetSearchStatus.Success,
-            packages,
-            $"{packages.Count} aplicativo(s) encontrado(s).",
-            result.ExitCode);
+        return packages.Count == 0
+            ? new(WingetSearchStatus.NoPackagesFound, [], "Nenhum aplicativo foi encontrado para o termo informado.", result.ExitCode)
+            : new(WingetSearchStatus.Success, packages, $"{packages.Count} aplicativo(s) encontrado(s).", result.ExitCode);
     }
 
+    /// <summary>
+    /// Instala um pacote em modo silencioso. Quando o instalador falha, tenta identificar se a causa
+    /// foi falta de permissão de administrador ou necessidade de interação, para orientar o usuário.
+    /// </summary>
     public async Task<PackageInstallResult> InstallAsync(
         InstallablePackage package,
         CancellationToken cancellationToken = default)
@@ -209,19 +225,11 @@ public sealed class WingetService : IPackageUpdateService
             return new(package, PackageUpdateStatus.Failed, "O WinGet não foi localizado.", null);
         }
 
-        var arguments = new[]
-        {
-            "install",
-            "--id", package.Id,
-            "--exact",
-            "--source", package.Source,
-            "--silent",
-            "--accept-source-agreements",
-            "--accept-package-agreements",
-            "--disable-interactivity"
-        };
-
-        var processResult = await ExecuteAsync(wingetPath, arguments, cancellationToken);
+        var processResult = await ExecuteAsync(
+            wingetPath,
+            BuildPackageArguments("install", package.Id, package.Source),
+            InstallTimeout,
+            cancellationToken);
 
         if (processResult.Canceled)
         {
@@ -244,28 +252,47 @@ public sealed class WingetService : IPackageUpdateService
         }
 
         var combinedOutput = $"{processResult.StandardError} {processResult.StandardOutput}".Trim();
-        if (processResult.ExitCode is 5 or -1978335189 || combinedOutput.Contains("admin", StringComparison.OrdinalIgnoreCase) || combinedOutput.Contains("elevat", StringComparison.OrdinalIgnoreCase))
+        if (processResult.ExitCode is AccessDeniedExitCode or InstallerRequiresElevationExitCode
+            || combinedOutput.Contains("admin", StringComparison.OrdinalIgnoreCase)
+            || combinedOutput.Contains("elevat", StringComparison.OrdinalIgnoreCase))
         {
             return new(package, PackageUpdateStatus.RequiresElevation, "A instalação exige privilégios de administrador (elevação administrativa).", processResult.ExitCode);
         }
 
-        if (processResult.ExitCode is -1978335215 || combinedOutput.Contains("interactive", StringComparison.OrdinalIgnoreCase))
+        if (processResult.ExitCode is InstallerRequiresInteractionExitCode
+            || combinedOutput.Contains("interactive", StringComparison.OrdinalIgnoreCase))
         {
             return new(package, PackageUpdateStatus.RequiresInteraction, "O instalador exige interação do usuário e não pôde ser executado em modo silencioso.", processResult.ExitCode);
         }
 
-        return new(package, PackageUpdateStatus.Failed, SummarizeError(string.IsNullOrWhiteSpace(processResult.StandardError) ? processResult.StandardOutput : processResult.StandardError), processResult.ExitCode);
+        var error = string.IsNullOrWhiteSpace(processResult.StandardError) ? processResult.StandardOutput : processResult.StandardError;
+        return new(package, PackageUpdateStatus.Failed, SummarizeError(error), processResult.ExitCode);
     }
 
-    private async Task<ProcessExecutionResult> ExecuteAsync(
+    /// <summary>
+    /// Argumentos comuns de <c>upgrade</c> e <c>install</c>: pacote exato, origem explícita, modo
+    /// silencioso e aceite dos termos (o usuário já confirmou a operação na tela).
+    /// </summary>
+    private static string[] BuildPackageArguments(string command, string id, string source) =>
+    [
+        command,
+        "--id", id,
+        "--exact",
+        "--source", source,
+        "--silent",
+        "--accept-source-agreements",
+        "--accept-package-agreements",
+        "--disable-interactivity"
+    ];
+
+    private Task<ProcessExecutionResult> ExecuteAsync(
         string fileName,
         IReadOnlyList<string> arguments,
+        TimeSpan timeout,
         CancellationToken cancellationToken) =>
-        await _processExecutor.ExecuteAsync(
-            new ProcessExecutionRequest(fileName, arguments, DefaultTimeout),
-            cancellationToken);
+        _processExecutor.ExecuteAsync(new ProcessExecutionRequest(fileName, arguments, timeout), cancellationToken);
 
-    private static WingetDiscoveryResult Result(
+    private static WingetDiscoveryResult DiscoveryFailure(
         WingetDiscoveryStatus status,
         string message,
         int? exitCode = null,
@@ -273,10 +300,14 @@ public sealed class WingetService : IPackageUpdateService
         IReadOnlyList<WingetSource>? sources = null) =>
         new(status, [], sources ?? [], version, message, exitCode, []);
 
+    /// <summary>IDs do WinGet usam letras, dígitos, ponto, hífen e sublinhado (ex.: <c>Microsoft.Edge</c>).</summary>
     private static bool IsSafeIdentifier(string value) =>
-        !string.IsNullOrWhiteSpace(value)
-        && Regex.IsMatch(value, "\\A[A-Za-z0-9][A-Za-z0-9._-]*\\z", RegexOptions.CultureInvariant);
+        !string.IsNullOrWhiteSpace(value) && SafeIdentifierRegex().IsMatch(value);
 
+    [GeneratedRegex(@"\A[A-Za-z0-9][A-Za-z0-9._-]*\z", RegexOptions.CultureInvariant)]
+    private static partial Regex SafeIdentifierRegex();
+
+    /// <summary>Limita a mensagem de erro a 300 caracteres para caber na tela e no histórico.</summary>
     private static string SummarizeError(string error)
     {
         var message = string.IsNullOrWhiteSpace(error)

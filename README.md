@@ -1,151 +1,142 @@
-# Atualizador Windows
+# App Updater
 
+Aplicativo para Windows que mantém os seus programas atualizados usando o **WinGet**, o gerenciador de pacotes oficial do Windows. Ele mostra quais aplicativos têm versão nova, atualiza os que você escolher e também pode fazer isso sozinho, em um horário agendado.
 
-## Objetivo
+Feito em C#, WPF e .NET 10. Interface em português do Brasil.
 
-Criar um aplicativo desktop simples e moderno que use o WinGet para detectar e atualizar pacotes, permita selecionar aplicativos e ofereça execução agendada pelo Agendador de Tarefas do Windows. Apenas a fonte `winget` é usada; a Microsoft Store não é suportada.
+## Recursos
 
-## Como trabalhar com estes arquivos
-
-4. Valide build, testes e resultado visual antes de avançar.
-5. Continue uma etapa por vez, seguindo a ordem de `docs/00-plano-geral.md`.
-
-Prompt inicial sugerido:
-
-
-## Tecnologias e decisões
-
-- **Linguagem:** C#.
-- **Interface:** WPF, XAML e padrão MVVM simples.
-- **Runtime alvo:** `net10.0-windows`, após confirmar que o SDK .NET 10 está disponível.
-- **Distribuição:** publicação autocontida para `win-x64`; testar outras arquiteturas separadamente.
-- **Atualizações:** executar o cliente `winget` por meio de `Process` com argumentos separados. Nunca usar `cmd.exe /c` para montar comandos com texto do usuário.
-- **Agendamento:** começar pelo Agendador de Tarefas do Windows. Não criar serviço Windows na primeira versão.
-- **Configuração:** salvar preferências do usuário em `%LOCALAPPDATA%`, com arquivo simples e versionado.
-- **Interface:** estilo Windows 11; tema Sistema/Claro/Escuro, cor de destaque selecionável e opção de cor personalizada.
-- **Idioma:** português brasileiro por padrão.
-
-.NET 10 é LTS e, segundo a política oficial consultada em 24/10/2026, tem suporte previsto até 14/11/2028. Confirmar a política vigente antes de cada atualização importante: https://dotnet.microsoft.com/pt-br/platform/support/policy
-
-## Estrutura
-
-```text
-.
-├── README.md
-├── docs/                     # Etapas de implementação
-    ├── agents/               # Especialistas delegáveis
-    └── skills/               # Padrões permanentes do projeto
-```
-
-O código da aplicação será criado durante as etapas. Não é necessário gerar uma arquitetura completa antes de validar a primeira janela.
-
-
-
-
-## Limites importantes
-
-- Não incluir a Microsoft Store: o aplicativo trabalha somente com a fonte `winget`.
-- Não executar atualizações reais durante testes automatizados.
-- Não fingir uma porcentagem de progresso que o WinGet não fornece. Exibir o aplicativo atual e o progresso geral por quantidade; usar progresso indeterminado durante a instalação.
-- Não exigir privilégios administrativos para abrir o aplicativo. Tratar separadamente instalações que pedirem elevação.
-- A tarefa agendada deve usar inicialmente a conta do usuário configurada e o contexto de sessão compatível com WinGet. Documentar limitações para execução com sessão encerrada.
-- Não prometer que um único `.exe` remove a dependência do WinGet do computador de destino.
-
-## Referências oficiais
-
-- WinGet: https://learn.microsoft.com/pt-br/windows/package-manager/winget/
-- Comando `upgrade`: https://learn.microsoft.com/pt-br/windows/package-manager/winget/upgrade
-- Fontes do WinGet: https://learn.microsoft.com/pt-br/windows/package-manager/winget/source
-- WPF: https://learn.microsoft.com/pt-br/dotnet/desktop/wpf/overview/
-- Publicação de arquivo único: https://learn.microsoft.com/pt-br/dotnet/core/deploying/single-file/overview
-
-## Estado atual do aplicativo
-
-As etapas 01 a 12 foram implementadas e verificadas no Windows. A solução está em `Atualizador.Windows.slnx`, o projeto WPF está em `src/Atualizador.Windows` e os testes estão em `tests/Atualizador.Windows.Tests`.
-
-O aplicativo oferece:
-
-- interface WPF em português brasileiro, com temas Sistema, Claro e Escuro;
-- estilo de botões inspirado no WinHawk / Windows 11 Fluent, com cantos arredondados, foco por teclado e contraste revisado;
-- cor de destaque do sistema, predefinida ou hexadecimal personalizada;
-- descoberta de atualizações com WinGet, sem alterar fontes automaticamente;
-- exclusão de aplicativos da atualização com persistência local e gestão exclusiva em Configurações;
-- pesquisa e instalação de novos pacotes pelo WinGet com seleção múltipla, progresso e avisos de procedência;
-- seleção, progresso, cancelamento e confirmação antes da atualização ou instalação;
-- histórico JSON local em `%LOCALAPPDATA%\\Atualizador.Windows`;
-- agendamento e inicialização opcional por tarefas fixas e removíveis do Agendador de Tarefas, respeitando as exclusões;
-- ícone local baseado no Material Symbols `system_update` e área de notificação com menu acessível;
-- aviso, ao abrir, quando existe versão mais nova publicada no GitHub (veja "Versões e releases").
-
-## Versões e releases
-
-- **Versão:** `yyyy.MM.dd.NN`, a data do lançamento (horário de Brasília) mais um contador do dia. Exemplos: `2026.10.28.01`, `2026.10.28.02`. A tag Git é `v2026.10.28.01`. Nunca se repete.
-- **Publicar:** faça push no `main`. Quando o CI termina com sucesso, o workflow `Release` dispara sozinho (também é possível executá-lo em `Actions > Release > Run workflow`, branch `main`). O workflow calcula a versão (`tools/Get-NextVersion.ps1`), compila, testa, gera `Atualizador.exe`, `Atualizador-Setup.exe` e `SHA256SUMS.txt` e cria a release com notas automáticas.
-- **CI:** `ci.yml` compila e testa em todo PR e push no `main`, e toda segunda-feira às 09:00 UTC para detectar quebras de SDK ou dependências.
-- **Dependências:** o Dependabot abre PRs semanais para NuGet e GitHub Actions.
-- **Aviso no aplicativo:** ao abrir, o app consulta a última release (`api.github.com`) e, se houver versão mais nova, mostra um aviso com botão para abrir a página da release. A verificação é silenciosa em caso de falha e não ocorre em compilações locais (versão `0.0.0.0`). Requer repositório público.
-- **Assinatura de código (opcional):** defina em `Settings > Secrets and variables > Actions` os segredos `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` e as variáveis `AZURE_SIGNING_ENDPOINT`, `AZURE_SIGNING_ACCOUNT`, `AZURE_SIGNING_PROFILE`. Enquanto `AZURE_SIGNING_ACCOUNT` não existir, as etapas de assinatura são ignoradas.
+- **Atualizações:** lista os aplicativos instalados que têm versão mais nova no WinGet. Você marca quais quer atualizar e acompanha o progresso de cada um.
+- **Instalar:** pesquisa aplicativos no catálogo do WinGet e instala os selecionados.
+- **Exclusões:** aplicativos que você não quer atualizar (por exemplo, uma versão específica de que você depende) ficam fora das verificações, manuais ou agendadas.
+- **Agendamento:** atualização automática a cada intervalo de horas, diária ou semanal, por uma tarefa do Agendador de Tarefas do Windows.
+- **Histórico:** registro local de todas as verificações, atualizações e instalações.
+- **Aparência:** tema claro, escuro ou igual ao do Windows; cor de destaque do sistema, predefinida ou personalizada; menu lateral que pode ser recolhido.
+- **Área de notificação:** opção de continuar rodando na bandeja ao fechar a janela.
+- **Atualização do próprio app:** ao abrir, o App Updater procura uma versão nova no GitHub e se atualiza sozinho. Também há o botão **Buscar nova versão** em Configurações.
 
 ## Requisitos
 
-- Windows 10 ou Windows 11 x64.
-- WinGet/App Installer para descoberta e atualização de aplicativos.
-- Sessão de usuário compatível com WinGet para operações que exigem interação ou acordos.
+- Windows 10 ou Windows 11, 64 bits.
+- [WinGet / Instalador de Aplicativo](https://learn.microsoft.com/windows/package-manager/winget/) instalado (já vem no Windows 11 e nas versões atuais do Windows 10).
 
-O aplicativo não incorpora o WinGet e não exige privilégios administrativos para abrir.
+O App Updater não precisa de permissão de administrador para abrir. Alguns instaladores de terceiros podem pedir essa permissão durante a atualização.
 
-## Executar no desenvolvimento
+## Instalação
+
+1. Baixe `Atualizador-Setup.exe` na [página de releases](https://github.com/lucasmota-dev/updater/releases/latest).
+2. Execute o instalador. Ele instala só para o seu usuário, em `%LOCALAPPDATA%\Programs\Atualizador`, e cria atalhos na Área de Trabalho e no Menu Iniciar.
+
+Também existe a versão portátil, `Atualizador.exe`, que não precisa de instalação. A versão portátil não se atualiza sozinha: ela só avisa quando há versão nova.
+
+Cada release publica `SHA256SUMS.txt` com as somas SHA-256 dos arquivos, para você conferir o download:
 
 ```powershell
+Get-FileHash .\Atualizador-Setup.exe -Algorithm SHA256
+```
+
+> **Aviso do Windows SmartScreen:** enquanto os arquivos não forem assinados (veja [Política de assinatura de código](#política-de-assinatura-de-código)), o Windows pode mostrar "O Windows protegeu o computador". Para continuar, clique em **Mais informações** e depois em **Executar assim mesmo**.
+
+## Desinstalação
+
+1. Em **Configurações**, desative o agendamento e a inicialização com o Windows, se você os ativou.
+2. Desinstale pelo painel **Aplicativos instalados** do Windows.
+
+As preferências e o histórico ficam em `%LOCALAPPDATA%\Atualizador.Windows` e não são removidos automaticamente. Apague essa pasta se quiser remover tudo.
+
+## Segurança
+
+- O app executa o `winget.exe` com argumentos separados, sem passar pelo `cmd.exe`, então nada do que você digita vira um comando.
+- Atualização e instalação usam sempre o **ID exato** e a **origem** do pacote (`--id … --exact --source …`), nunca só o nome exibido.
+- Só a fonte `winget` é consultada. A Microsoft Store (`msstore`) não é suportada.
+- As tarefas agendadas rodam com a sua conta, sem elevação, e sempre executam o mesmo comando fixo.
+- A atualização do próprio app só aceita downloads de `github.com` e confere o SHA-256 do instalador antes de executá-lo.
+
+Cancelar uma atualização interrompe o WinGet, mas um instalador que já começou pode não desfazer o que fez.
+
+## Privacidade
+
+O App Updater não coleta dados pessoais, não usa telemetria e não envia a lista dos seus aplicativos para nenhum servidor. Ele só se conecta à internet em dois casos:
+
+1. **WinGet:** quando você busca atualizações, pesquisa ou instala aplicativos, o WinGet consulta as fontes configuradas no Windows e baixa os instaladores. Essas conexões seguem a política de privacidade da Microsoft e dos publicadores de cada aplicativo.
+2. **Nova versão do App Updater:** ao abrir, o app consulta as releases deste repositório no GitHub (`api.github.com`). Para desligar essa consulta, desmarque **Procurar nova versão ao abrir o aplicativo** em **Configurações › Sobre o App Updater**. Essa conexão segue a [política de privacidade do GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
+
+Preferências e histórico ficam só no seu computador. O instalador mostra este aviso antes de instalar (`installer/PRIVACIDADE.txt`).
+
+## Limitações conhecidas
+
+- O WinGet não oferece saída estruturada para essas listas, então o app lê as tabelas de texto. O formato foi testado em inglês, português e espanhol; versões futuras do WinGet podem exigir ajustes.
+- Atualizações agendadas dependem de você estar conectado ao Windows.
+- Alguns instaladores exigem interação ou reinicialização e não completam em modo silencioso.
+
+## Desenvolvimento
+
+Requer o [.NET SDK 10](https://dotnet.microsoft.com/download).
+
+```powershell
+# Executar
 dotnet run --project src/Atualizador.Windows/Atualizador.Windows.csproj
+
+# Testes (usam processos simulados: nenhum aplicativo real é atualizado)
+dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj
+
+# Publicar o executável autocontido
+dotnet publish src/Atualizador.Windows/Atualizador.Windows.csproj -c Release -p:PublishProfile=WinX64 -o artifacts/publish/win-x64
 ```
 
-Executar os testes sem atualizar aplicativos reais:
+> Não execute `Atualizador.Windows.exe --scheduled` em uma máquina com agendamento configurado: esse modo atualiza aplicativos de verdade.
 
-```powershell
-dotnet test tests/Atualizador.Windows.Tests/Atualizador.Windows.Tests.csproj --configuration Release
+### Estrutura
+
+```text
+src/Atualizador.Windows/
+├── Models/        Dados (pacotes, histórico, preferências)
+├── Services/      WinGet, Agendador de Tarefas, arquivos JSON, tema, atualização do app
+├── ViewModels/    Lógica das telas (MVVM)
+├── Views/         Janela principal (XAML)
+├── Converters/    Textos de exibição
+└── Resources/     Temas, cores e estilos dos controles
+tests/Atualizador.Windows.Tests/   Testes automatizados (MSTest)
+installer/Atualizador.iss          Instalador (Inno Setup)
+tools/                             Scripts do CI e do release
 ```
 
-## Publicar
+O nome técnico do projeto (namespace, executável, pasta de dados e nomes das tarefas agendadas) continua `Atualizador.Windows`. Isso mantém compatíveis as instalações, os agendamentos e as atualizações automáticas de quem já usa o app.
 
-Publicação autocontida para Windows x64:
+### Versões e releases
 
-```powershell
-dotnet restore src/Atualizador.Windows/Atualizador.Windows.csproj --runtime win-x64
-dotnet publish src/Atualizador.Windows/Atualizador.Windows.csproj --configuration Release --no-restore --output artifacts/publish/win-x64 -p:PublishProfile=WinX64
-```
+- Versão no formato `yyyy.MM.dd.NN` (data no horário de Brasília + contador do dia), por exemplo `2026.11.04.01`. A tag Git é `v2026.11.04.01`.
+- A versão não é escrita à mão: `tools/Get-NextVersion.ps1` a calcula no workflow de release. Compilações locais ficam em `0.0.0.0` e não procuram atualização.
+- O workflow **CI** compila e testa cada pull request e cada push no `main`. Quando o CI termina com sucesso em um push no `main`, o workflow **Release** compila, testa, gera `Atualizador.exe`, `Atualizador-Setup.exe` e `SHA256SUMS.txt` e publica a release.
 
-O pacote ZIP gerado em `artifacts/Atualizador.Windows-0.1.0-win-x64.zip` contém o executável autocontido. A publicação não é assinada nesta versão.
+### Configuração da assinatura (mantenedores)
 
-O instalador `Atualizador-Setup.exe` é compilado pelo workflow do GitHub Actions com `installer/Atualizador.iss` e instala por usuário, sem pedir permissão de administrador, em `%LOCALAPPDATA%\Programs\Atualizador`, com atalhos e desinstalador.
+O workflow **Release** assina `Atualizador.exe` e `Atualizador-Setup.exe` pelo [SignPath](https://signpath.io). As etapas só rodam quando estes valores existem em **Settings › Secrets and variables › Actions**:
 
-## Instalação e remoção
+| Tipo | Nome |
+|---|---|
+| Segredo | `SIGNPATH_API_TOKEN` |
+| Variável | `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_SIGNING_POLICY_SLUG` |
 
-1. Execute `Atualizador-Setup.exe` para instalar em `%LOCALAPPDATA%\Programs\Atualizador`, ou extraia o ZIP portátil em uma pasta escolhida pelo usuário.
-2. O instalador cria atalhos na Área de Trabalho e no Menu Iniciar.
-3. Configure o agendamento, a inicialização e a bandeja somente se desejar.
-4. Para remover, desative/remova o agendamento e a inicialização na tela **Configurações**.
-5. Use o desinstalador do Inno Setup ou remova a pasta portátil. As preferências e o histórico ficam em `%LOCALAPPDATA%\\Atualizador.Windows` e não devem ser removidos automaticamente.
+As configurações de artefato usadas no SignPath estão em `.signpath/artifact-configurations/` (`app-exe` e `installer`). Cada assinatura precisa ser aprovada manualmente no SignPath; o workflow espera até 1 hora por aprovação. Sem esses valores, os binários são publicados sem assinatura.
 
-### Atualização automática do aplicativo
+## Política de assinatura de código
 
-Ao abrir, a cópia instalada consulta a última release no GitHub. Se houver uma versão mais nova, o aplicativo:
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org).
 
-1. Baixa `Atualizador-Setup.exe` e `SHA256SUMS.txt` da release.
-2. Confere o SHA-256 do instalador. Se a soma não confere, descarta o arquivo.
-3. Executa o instalador em modo silencioso (`/VERYSILENT /AUTOUPDATE=1`), encerra o aplicativo e o instalador o abre de novo na versão nova.
+- **Autores e revisores (committers and reviewers):** [Lucas Mota](https://github.com/lucasmota-dev). Contribuições de outras pessoas só entram depois da revisão dele.
+- **Aprovadores (approvers):** [Lucas Mota](https://github.com/lucasmota-dev). Cada assinatura é aprovada manualmente.
+- Só são assinados binários compilados pelo GitHub Actions a partir do código deste repositório.
+- Privacidade: veja a seção [Privacidade](#privacidade). O app não envia informações a outros sistemas, exceto as consultas descritas lá, e a consulta automática de nova versão pode ser desligada.
 
-O aplicativo não atualiza a si mesmo durante uma atualização ou instalação de pacotes. Cópias portáteis e instalações antigas em `C:\Atualizador` (feitas como administrador) só mostram o aviso com o link da release. Nesse caso, instale a versão nova e remova a instalação antiga pelo desinstalador.
+## Licença
 
-Limitação: o SHA-256 vem da mesma release e protege contra download corrompido, não contra uma release adulterada. Enquanto a assinatura de código não estiver configurada, o executável não é assinado.
+[MIT](LICENSE) © Lucas Mota
 
-## Limitações confirmadas
+## Créditos
 
-- A saída do WinGet é uma tabela de texto; o parser cobre formatos testados em inglês, português e espanhol, mas pode exigir evolução para novos formatos.
-- A Microsoft Store (`msstore`) não é suportada: só a fonte `winget` é consultada.
-- Instaladores podem exigir UAC, interface própria ou reinicialização; cancelar o WinGet não garante rollback.
-- Agendamentos dependem da conta atual, da sessão compatível e das limitações do WinGet quando o usuário está desconectado.
-- A barra de progresso representa pacotes processados; durante o instalador individual ela é indeterminada.
-- A assinatura de código só é aplicada se a conta do Azure Trusted Signing estiver configurada (veja "Versões e releases"); sem ela, o Windows SmartScreen pode avisar sobre editor desconhecido.
-- O compilador Inno Setup não estava disponível localmente; a compilação do instalador foi preparada no workflow e não foi validada neste checkout.
-- Não execute `Atualizador.Windows.exe --scheduled` em um ambiente com agendamento ativo durante testes: esse modo pode iniciar atualizações reais. Use uma configuração desligada ou um ambiente isolado.
+- Ícone baseado no símbolo `system_update` do [Material Symbols](https://fonts.google.com/icons), licença Apache 2.0 (`assets/icons/Apache-2.0.txt`).
+
+## Autor
+
+Lucas Mota — [github.com/lucasmota-dev](https://github.com/lucasmota-dev)

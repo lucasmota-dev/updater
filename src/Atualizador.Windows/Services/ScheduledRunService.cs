@@ -2,8 +2,17 @@ using Atualizador.Windows.Models;
 
 namespace Atualizador.Windows.Services;
 
+/// <summary>
+/// Execução sem janela iniciada pela tarefa agendada (<c>Atualizador.Windows.exe --scheduled</c>).
+/// <para>
+/// Lê <c>schedule.json</c>, descobre as atualizações (ou usa os pacotes escolhidos), remove os
+/// excluídos, atualiza um por um e grava o resultado no histórico.
+/// </para>
+/// <para>Códigos de saída: 0 = sucesso ou nada a fazer; 1 = falha ou cancelamento; 2 = outra execução já ativa.</para>
+/// </summary>
 public sealed class ScheduledRunService
 {
+    // Mutex nomeado: impede duas execuções agendadas ao mesmo tempo (ex.: a anterior ainda não terminou).
     private const string MutexName = "Atualizador.Windows.ScheduledUpdate.v1";
     private readonly ScheduleStore _scheduleStore;
     private readonly IPackageUpdateService _wingetService;

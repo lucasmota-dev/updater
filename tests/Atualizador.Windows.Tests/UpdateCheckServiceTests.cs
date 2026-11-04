@@ -120,6 +120,29 @@ public sealed class UpdateCheckServiceTests
         Assert.IsNull(await invalid.CheckAsync(Current));
     }
 
+    [TestMethod]
+    public async Task CheckDetailedAsync_DistinguishesUpToDateFromFailure()
+    {
+        // A busca manual precisa dizer "você já usa a mais recente" ou "não foi possível consultar".
+        var upToDate = CreateService(Json("v2026.10.28.01", "https://github.com/lucasmota-dev/updater/releases/tag/v2026.10.28.01"));
+        var failed = CreateService("", HttpStatusCode.InternalServerError);
+        var newer = CreateService(Json("v2026.10.28.02", "https://github.com/lucasmota-dev/updater/releases/tag/v2026.10.28.02"));
+
+        Assert.AreEqual(UpdateCheckOutcome.UpToDate, (await upToDate.CheckDetailedAsync(Current)).Outcome);
+        Assert.AreEqual(UpdateCheckOutcome.Failed, (await failed.CheckDetailedAsync(Current)).Outcome);
+        var available = await newer.CheckDetailedAsync(Current);
+        Assert.AreEqual(UpdateCheckOutcome.UpdateAvailable, available.Outcome);
+        Assert.AreEqual(new Version(2026, 10, 28, 2), available.Release?.Version);
+    }
+
+    [TestMethod]
+    public async Task CheckDetailedAsync_LocalBuildIsNotApplicable()
+    {
+        var service = CreateService(Json("v2026.10.28.02", "https://github.com/a/b"));
+
+        Assert.AreEqual(UpdateCheckOutcome.NotApplicable, (await service.CheckDetailedAsync(new Version(0, 0, 0, 0))).Outcome);
+    }
+
     private static UpdateCheckService CreateService(string body, HttpStatusCode status = HttpStatusCode.OK) =>
         new(new HttpClient(new StubHandler(status, body)), new Uri("https://example.test/latest"));
 

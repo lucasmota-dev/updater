@@ -29,6 +29,26 @@ public sealed class WingetOutputParserTests
     }
 
     [TestMethod]
+    public void ParseUpgradeList_AcceptsTableWithoutSourceColumn()
+    {
+        // Saída real do WinGet com "--source winget": a coluna Source não aparece.
+        const string output = """
+            Name           Id             Version       Available
+            ---------------------------------------------------------
+            Microsoft Edge Microsoft.Edge 155.0.4283.45 156.0.4314.58
+            1 upgrades available.
+            """;
+
+        var result = WingetOutputParser.ParseUpgradeList(output);
+
+        Assert.HasCount(1, result.Packages);
+        Assert.AreEqual("Microsoft.Edge", result.Packages[0].Id);
+        Assert.AreEqual("156.0.4314.58", result.Packages[0].AvailableVersion);
+        Assert.AreEqual("winget", result.Packages[0].Source);
+        Assert.IsEmpty(result.Warnings);
+    }
+
+    [TestMethod]
     public void ParseUpgradeList_ParsesLocalizedHeadersAndUnknownVersion()
     {
         const string output = """

@@ -2,6 +2,7 @@ using Atualizador.Windows.Services;
 
 namespace Atualizador.Windows.ViewModels;
 
+/// <summary>Seção "Área de notificação" de Configurações: fechar a janela esconde o app na bandeja.</summary>
 public sealed class TraySettingsViewModel : ViewModelBase
 {
     private readonly TrayPreferencesStore _store;
@@ -15,6 +16,7 @@ public sealed class TraySettingsViewModel : ViewModelBase
         ApplyCommand = new DelegateCommand(Apply);
     }
 
+    /// <summary>Valor da caixa de seleção. Lido pelo <see cref="TrayIconService"/> ao fechar a janela.</summary>
     public bool MinimizeToTray
     {
         get => _minimizeToTray;

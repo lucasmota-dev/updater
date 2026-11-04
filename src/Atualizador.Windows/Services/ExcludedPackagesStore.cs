@@ -1,61 +1,29 @@
-using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Atualizador.Windows.Models;
 
 namespace Atualizador.Windows.Services;
 
-public sealed class ExcludedPackagesStore
+/// <summary>
+/// Lista de aplicativos que o usuário excluiu das atualizações (<c>excluded-packages.json</c>).
+/// Um pacote é identificado pelo par ID + origem, nunca apenas pelo nome exibido.
+/// A lista vale para a tela de atualizações e para a execução agendada.
+/// </summary>
+public sealed class ExcludedPackagesStore(string? filePath = null)
 {
     private const int CurrentVersion = 1;
     private readonly object _sync = new();
-    private readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
 
-    public ExcludedPackagesStore(string? filePath = null)
-    {
-        FilePath = filePath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Atualizador.Windows",
-            "excluded-packages.json");
-    }
+    public string FilePath { get; } = filePath ?? AppDataPaths.File("excluded-packages.json");
 
-    public string FilePath { get; }
-
+    /// <summary>Disparado depois de qualquer inclusão ou remoção, para a tela de Configurações recarregar a lista.</summary>
     public event EventHandler? Changed;
 
     public IReadOnlyList<ExcludedPackage> Load()
     {
         lock (_sync)
         {
-            try
-            {
-                if (!File.Exists(FilePath))
-                {
-                    return [];
-                }
-
-                var file = JsonSerializer.Deserialize<ExcludedPackagesFile>(
-                    File.ReadAllText(FilePath), _jsonOptions);
-                return file is { Version: CurrentVersion, Packages: not null }
-                    ? file.Packages
-                    : [];
-            }
-            catch (IOException)
-            {
-                return [];
-            }
-            catch (JsonException)
-            {
-                return [];
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return [];
-            }
+            return JsonFile.TryRead<ExcludedPackagesFile>(FilePath) is { Version: CurrentVersion, Packages: { } packages }
+                ? packages
+                : [];
         }
     }
 
@@ -67,9 +35,16 @@ public sealed class ExcludedPackagesStore
         return Load().Any(item => item.Identity.Equals(identity, StringComparison.OrdinalIgnoreCase));
     }
 
-    public IReadOnlyList<UpdatablePackage> Filter(IEnumerable<UpdatablePackage> packages) =>
-        packages.Where(package => !IsExcluded(package)).ToArray();
+    /// <summary>Remove da sequência os pacotes excluídos. Lê o arquivo uma única vez.</summary>
+    public IReadOnlyList<UpdatablePackage> Filter(IEnumerable<UpdatablePackage> packages)
+    {
+        var excluded = Load().Select(item => item.Identity).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return packages
+            .Where(package => !excluded.Contains(ExcludedPackageIdentity.Create(package.Id, package.Source)))
+            .ToArray();
+    }
 
+    /// <summary>Adiciona os pacotes à lista. Pacotes já excluídos são atualizados, não duplicados.</summary>
     public void Add(IEnumerable<UpdatablePackage> packages)
     {
         lock (_sync)
@@ -91,39 +66,16 @@ public sealed class ExcludedPackagesStore
     {
         lock (_sync)
         {
-            var remaining = Load()
+            Save(Load()
                 .Where(item => !item.Identity.Equals(package.Identity, StringComparison.OrdinalIgnoreCase))
-                .ToArray();
-            Save(remaining);
+                .ToArray());
         }
 
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    private void Save(IReadOnlyList<ExcludedPackage> packages)
-    {
-        var directory = Path.GetDirectoryName(FilePath);
-        if (directory is null)
-        {
-            return;
-        }
+    private void Save(IReadOnlyList<ExcludedPackage> packages) =>
+        JsonFile.TryWrite(FilePath, new ExcludedPackagesFile(CurrentVersion, packages));
 
-        Directory.CreateDirectory(directory);
-        var temporaryPath = $"{FilePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            var file = new ExcludedPackagesFile(CurrentVersion, packages);
-            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(file, _jsonOptions));
-            File.Move(temporaryPath, FilePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
-    }
-
-    private sealed record ExcludedPackagesFile(int Version, IReadOnlyList<ExcludedPackage> Packages);
+    private sealed record ExcludedPackagesFile(int Version, IReadOnlyList<ExcludedPackage>? Packages);
 }

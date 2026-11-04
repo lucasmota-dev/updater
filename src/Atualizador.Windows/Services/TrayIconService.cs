@@ -6,6 +6,12 @@ using Atualizador.Windows.ViewModels;
 
 namespace Atualizador.Windows.Services;
 
+/// <summary>
+/// Ícone na área de notificação (bandeja), com menu Abrir / Verificar atualizações / Status / Sair.
+/// Usa o <c>NotifyIcon</c> do Windows Forms, porque o WPF não tem um controle equivalente.
+/// Quando "Minimizar para a bandeja ao fechar" está ligado, fechar a janela só a esconde;
+/// o app termina pelo item Sair.
+/// </summary>
 public sealed class TrayIconService : IDisposable
 {
     private readonly Window _window;
@@ -40,7 +46,7 @@ public sealed class TrayIconService : IDisposable
         _notifyIcon = new NotifyIcon
         {
             Icon = icon,
-            Text = "Atualizador Windows",
+            Text = "App Updater",
             Visible = true,
             ContextMenuStrip = menu
         };
@@ -63,6 +69,7 @@ public sealed class TrayIconService : IDisposable
         _notifyIcon.Dispose();
     }
 
+    /// <summary>Transforma "fechar" em "esconder" quando a opção da bandeja está ligada.</summary>
     private void OnWindowClosing(object? sender, CancelEventArgs e)
     {
         if (!_isExiting && _minimizeToTray())
@@ -89,6 +96,7 @@ public sealed class TrayIconService : IDisposable
         _window.Activate();
     }
 
+    /// <summary>Mostra o último aviso do app no item "Status" do menu.</summary>
     private void OnNotificationChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(NotificationService.Current) || _notifications.Current is null)
@@ -99,6 +107,7 @@ public sealed class TrayIconService : IDisposable
         _statusItem.Text = $"Status: {_notifications.Current.Message}";
     }
 
+    /// <summary>Usa o ícone embutido no próprio executável.</summary>
     private static Icon? TryLoadApplicationIcon()
     {
         try

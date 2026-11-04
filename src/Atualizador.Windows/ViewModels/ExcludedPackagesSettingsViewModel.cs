@@ -4,6 +4,10 @@ using Atualizador.Windows.Services;
 
 namespace Atualizador.Windows.ViewModels;
 
+/// <summary>
+/// Seção "Aplicativos excluídos da atualização" de Configurações. É o único lugar onde uma
+/// exclusão pode ser desfeita. A lista se atualiza sozinha quando a página Atualizações exclui um app.
+/// </summary>
 public sealed class ExcludedPackagesSettingsViewModel : ViewModelBase
 {
     private readonly ExcludedPackagesStore _store;

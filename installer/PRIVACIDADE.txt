@@ -1,0 +1,13 @@
+﻿Privacidade do App Updater
+
+O App Updater não coleta dados pessoais, não usa telemetria e não envia a lista dos seus aplicativos para nenhum servidor.
+
+Conexões que o aplicativo faz:
+
+1. WinGet. Quando você busca atualizações, pesquisa ou instala aplicativos, o App Updater executa o WinGet, o gerenciador de pacotes do Windows. O WinGet consulta as fontes configuradas no Windows (por padrão, o catálogo "winget" da Microsoft) e baixa os instaladores. Essas conexões seguem a política de privacidade da Microsoft e dos publicadores de cada aplicativo.
+
+2. Nova versão do App Updater. Ao abrir, o aplicativo consulta a página de releases do projeto no GitHub (api.github.com e github.com) para saber se existe uma versão mais nova. A consulta envia apenas o que qualquer acesso à internet envia (endereço IP e identificação do programa). Essa conexão segue a política de privacidade do GitHub. Para desligá-la, abra Configurações > Sobre o App Updater e desmarque "Procurar nova versão ao abrir o aplicativo".
+
+As preferências e o histórico ficam somente neste computador, na pasta %LOCALAPPDATA%\Atualizador.Windows.
+
+Código-fonte: https://github.com/lucasmota-dev/updater

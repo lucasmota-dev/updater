@@ -1,5 +1,53 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:conv="clr-namespace:Atualizador.Windows.Converters">
+    <!-- Estilos de todos os controles. Não contém cores fixas: tudo vem dos dicionários de tema
+         (Theme.*.xaml) e de cor de destaque (Accent.xaml) por DynamicResource. -->
+
+    <conv:DisplayTextConverter x:Key="DisplayTextConverter" />
+
+    <!-- Modelo para listas de enums: mostra o texto em português em vez do nome interno. -->
+    <DataTemplate x:Key="DisplayTextTemplate">
+        <TextBlock Text="{Binding Converter={StaticResource DisplayTextConverter}}" />
+    </DataTemplate>
+
+    <!-- Fonte de ícones do Windows 11, com a do Windows 10 como alternativa (mesmos códigos). -->
+    <FontFamily x:Key="IconFontFamily">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+    <!-- Tipografia -->
+    <Style x:Key="SectionTitleTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="BodyTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+        <Setter Property="LineHeight" Value="24" />
+    </Style>
+    <Style x:Key="StatusTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="CaptionTextStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+    </Style>
+    <Style x:Key="IconTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource IconFontFamily}" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Painel de botões que quebra linha quando a janela fica estreita (o WrapPanel reorganiza
+         sozinho a cada redimensionamento). Cada item usa Margin="0,0,8,8"; a margem negativa
+         de baixo compensa a última linha para o espaçamento externo continuar igual. -->
+    <Style x:Key="ActionBarStyle" TargetType="WrapPanel">
+        <Setter Property="Orientation" Value="Horizontal" />
+        <Setter Property="Margin" Value="0,0,0,-8" />
+    </Style>
+    <Thickness x:Key="ActionItemMargin">0,0,8,8</Thickness>
+
     <Style x:Key="FocusVisualStyle" TargetType="Control">
         <Setter Property="Template">
             <Setter.Value>
@@ -125,6 +173,10 @@
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
         <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
         <Setter Property="FocusVisualStyle" Value="{DynamicResource FocusVisualStyle}" />
+        <!-- Com o menu recolhido só o ícone aparece; a dica mostra o nome da página. -->
+        <Setter Property="ToolTip" Value="{Binding Title}" />
+        <Setter Property="ToolTipService.IsEnabled"
+                Value="{Binding DataContext.IsNavigationCollapsed, RelativeSource={RelativeSource AncestorType=Window}}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
@@ -146,6 +198,33 @@
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="navBorder" Property="Background" Value="{DynamicResource SubtleAccentBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Botão só com ícone (ex.: ☰ que recolhe o menu). Mesmo tamanho e recuo dos itens do menu,
+         para o ícone ficar alinhado com os ícones das páginas. -->
+    <Style x:Key="NavigationToggleButtonStyle" TargetType="Button">
+        <Setter Property="Padding" Value="12,10" />
+        <Setter Property="Margin" Value="1,0,0,8" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource FocusVisualStyle}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                        <TextBlock Width="28" Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}" Style="{StaticResource IconTextStyle}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SubtleAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SelectionBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -349,9 +428,11 @@
         </Setter>
     </Style>
 
+    <!-- Campo de texto. O texto de "Tag" aparece como dica enquanto o campo está vazio. -->
     <Style x:Key="SettingsTextBoxStyle" TargetType="TextBox">
         <Setter Property="MinHeight" Value="34" />
         <Setter Property="Padding" Value="10,6" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
@@ -368,9 +449,23 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="5"
                             SnapsToDevicePixels="True">
-                        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" Margin="{TemplateBinding Padding}" />
+                        <Grid Margin="{TemplateBinding Padding}">
+                            <TextBlock x:Name="placeholder"
+                                       Margin="2,0,0,0"
+                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                       Text="{TemplateBinding Tag}"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"
+                                       IsHitTestVisible="False"
+                                       Visibility="Collapsed" />
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="placeholder" Property="Visibility" Value="Visible" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrushHover}" />
                         </Trigger>
@@ -393,6 +488,61 @@
         <Setter Property="Background" Value="{DynamicResource ProgressTrackBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+    </Style>
+
+    <!-- Barra de rolagem fina com as cores do tema (a padrão do WPF fica clara mesmo no tema escuro).
+         Estilo implícito: vale para todas as barras de rolagem do aplicativo. -->
+    <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border x:Name="thumb" CornerRadius="3" Background="{DynamicResource ScrollThumbBrush}" />
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="thumb" Property="Background" Value="{DynamicResource SecondaryTextBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Width" Value="8" />
+        <Setter Property="MinWidth" Value="8" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Track x:Name="PART_Track" Margin="1,2" IsDirectionReversed="True">
+                        <Track.Thumb>
+                            <Thumb Style="{StaticResource ScrollBarThumbStyle}" />
+                        </Track.Thumb>
+                    </Track>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Height" Value="8" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Track x:Name="PART_Track" Margin="2,1">
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ScrollBarThumbStyle}" />
+                                </Track.Thumb>
+                            </Track>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style x:Key="UpdateListStyle" TargetType="ListView">

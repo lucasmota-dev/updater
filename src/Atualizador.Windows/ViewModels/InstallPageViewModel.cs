@@ -6,18 +6,14 @@ using Atualizador.Windows.Services;
 
 namespace Atualizador.Windows.ViewModels;
 
-public sealed class InstallItemViewModel : ViewModelBase
+/// <summary>Uma linha da lista de resultados da pesquisa: o pacote, a seleção e o estado da instalação.</summary>
+public sealed class InstallItemViewModel(InstallablePackage package) : ViewModelBase
 {
     private bool _isSelected;
     private PackageUpdateStatus _status = PackageUpdateStatus.NotStarted;
     private string _statusMessage = "Pronto para instalar";
 
-    public InstallItemViewModel(InstallablePackage package)
-    {
-        Package = package;
-    }
-
-    public InstallablePackage Package { get; }
+    public InstallablePackage Package { get; } = package;
 
     public string Name => Package.Name;
 
@@ -28,10 +24,6 @@ public sealed class InstallItemViewModel : ViewModelBase
     public string Source => Package.Source;
 
     public string Publisher => Package.Publisher;
-
-    public string Match => Package.Match;
-
-    public string Glyph => "📦";
 
     public bool IsSelected
     {
@@ -52,6 +44,11 @@ public sealed class InstallItemViewModel : ViewModelBase
     }
 }
 
+/// <summary>
+/// Página Instalar: pesquisa no catálogo do WinGet e instala os pacotes marcados, um de cada vez.
+/// Cada instalação é registrada no histórico. O cancelamento interrompe o WinGet, mas um
+/// instalador já iniciado pode não desfazer o que fez.
+/// </summary>
 public sealed class InstallPageViewModel : PageViewModel, IDisposable
 {
     private readonly IPackageUpdateService _wingetService;
@@ -75,7 +72,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
         HistoryStore? historyStore = null,
         IUserConfirmation? confirmation = null,
         NotificationService? notificationService = null)
-        : base("Instalar", "Pesquise e instale aplicativos disponíveis no catálogo do WinGet.", "📥")
+        : base("Instalar", "Pesquise e instale aplicativos do catálogo do WinGet.", "\uE896")
     {
         _wingetService = wingetService;
         _historyStore = historyStore ?? new HistoryStore();
@@ -126,13 +123,13 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
     public string StatusMessage
     {
         get => _statusMessage;
-        set => SetProperty(ref _statusMessage, value);
+        private set => SetProperty(ref _statusMessage, value);
     }
 
     public string CurrentPackageName
     {
         get => _currentPackageName;
-        set => SetProperty(ref _currentPackageName, value);
+        private set => SetProperty(ref _currentPackageName, value);
     }
 
     public bool IsSearching
@@ -187,6 +184,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
 
     public DelegateCommand CancelInstallCommand { get; }
 
+    /// <summary>Pesquisa o termo digitado (somente na fonte <c>winget</c>) e substitui a lista de resultados.</summary>
     public async Task SearchAsync()
     {
         if (IsSearching || IsInstalling || string.IsNullOrWhiteSpace(SearchQuery))
@@ -223,6 +221,10 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
         }
     }
 
+    /// <summary>
+    /// Pede confirmação e instala os pacotes marcados em sequência. Ao cancelar, os pacotes
+    /// restantes são marcados como cancelados sem chamar o WinGet.
+    /// </summary>
     public async Task InstallSelectedAsync()
     {
         var selected = Packages.Where(package => package.IsSelected).ToArray();
@@ -234,7 +236,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
         var packageNames = string.Join(", ", selected.Select(package => package.Name));
         if (!_confirmation.Confirm(
                 "Instalar aplicativos",
-                $"Deseja instalar {selected.Length} aplicativo(s) selecionado(s)?\n\n{packageNames}\n\nAtenção: a fonte oficial winget é priorizada. A presença no catálogo não garante segurança absoluta."))
+                $"Deseja instalar {selected.Length} aplicativo(s) selecionado(s)?\n\n{packageNames}\n\nAtenção: estar no catálogo do WinGet não garante que o aplicativo seja seguro. Revise o publicador."))
         {
             return;
         }

@@ -7,9 +7,14 @@ using Atualizador.Windows.Services;
 
 namespace Atualizador.Windows.ViewModels;
 
+/// <summary>
+/// Página Atualizações: consulta o WinGet, mostra os pacotes com versão nova (menos os excluídos
+/// pelo usuário) e atualiza os pacotes marcados, um de cada vez, com progresso e cancelamento.
+/// Toda consulta e toda atualização viram um registro no histórico.
+/// </summary>
 public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
 {
-    private readonly WingetService _wingetService;
+    private readonly IPackageUpdateService _wingetService;
     private readonly HistoryStore _historyStore;
     private readonly ExcludedPackagesStore _excludedPackagesStore;
     private readonly ListCollectionView _filteredPackages;
@@ -21,16 +26,16 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     private double _updateProgress;
     private int _completedUpdates;
     private string _currentPackageName = string.Empty;
-    private string _statusMessage = "Clique em Atualizar lista para consultar o WinGet.";
+    private string _statusMessage = "Clique em Buscar atualizações para consultar o WinGet.";
     private CancellationTokenSource? _updateCancellation;
 
     public UpdatesPageViewModel(
-        WingetService wingetService,
+        IPackageUpdateService wingetService,
         HistoryStore? historyStore = null,
         ExcludedPackagesStore? excludedPackagesStore = null,
         IUserConfirmation? confirmation = null,
         NotificationService? notificationService = null)
-        : base("Atualizações", "Consulte os aplicativos que possuem atualizações disponíveis.", "↻")
+        : base("Atualizações", "Veja quais aplicativos instalados têm uma versão mais nova disponível.", "\uE895")
     {
         _wingetService = wingetService;
         _historyStore = historyStore ?? new HistoryStore();
@@ -127,7 +132,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     public bool HasSelectedPackages => Packages.Any(package => package.IsSelected);
 
     public string EmptyStateMessage => Packages.Count == 0
-        ? "Nenhuma atualização carregada. Clique em Atualizar lista para consultar o WinGet."
+        ? "Nenhuma atualização carregada. Clique em Buscar atualizações para consultar o WinGet."
         : "Nenhuma atualização corresponde ao filtro selecionado.";
 
     public int SelectedCount => Packages.Count(package => package.IsSelected);
@@ -135,6 +140,10 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     public IReadOnlyList<UpdatablePackage> SelectedPackages =>
         Packages.Where(package => package.IsSelected).Select(package => package.Package).ToArray();
 
+    /// <summary>
+    /// Botão "Buscar atualizações" (e item "Verificar atualizações" da bandeja): consulta o WinGet,
+    /// remove os pacotes excluídos, substitui a lista e registra o resultado no histórico.
+    /// </summary>
     private async Task RefreshAsync()
     {
         var startedAt = DateTimeOffset.Now;
@@ -199,6 +208,10 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         }
     }
 
+    /// <summary>
+    /// Pede confirmação e atualiza os pacotes marcados em sequência. Revalida a lista de exclusões
+    /// antes de cada pacote, porque ela pode ter mudado depois da consulta.
+    /// </summary>
     private async Task UpdateSelectedAsync()
     {
         var selectedPackages = Packages.Where(package => package.IsSelected).ToArray();
@@ -438,6 +451,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     }
 }
 
+/// <summary>Uma linha da lista de atualizações: o pacote, a seleção e o estado da atualização.</summary>
 public sealed class UpdateItemViewModel(UpdatablePackage package) : ViewModelBase
 {
     private bool _isSelected;

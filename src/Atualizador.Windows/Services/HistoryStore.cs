@@ -1,83 +1,37 @@
-using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Atualizador.Windows.Models;
 
 namespace Atualizador.Windows.Services;
 
-public sealed class HistoryStore
+/// <summary>
+/// Histórico local de verificações, atualizações e instalações (<c>history.json</c>).
+/// Mantém só os <see cref="MaxEntries"/> registros mais recentes, do mais novo para o mais antigo.
+/// O <c>lock</c> evita que a tela e uma operação em andamento gravem o arquivo ao mesmo tempo.
+/// </summary>
+public sealed class HistoryStore(string? filePath = null)
 {
     public const int CurrentVersion = 1;
     public const int MaxEntries = 100;
     private readonly object _sync = new();
-    private readonly JsonSerializerOptions _jsonOptions = new()
-    {
-        WriteIndented = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
 
-    public HistoryStore(string? filePath = null)
-    {
-        FilePath = filePath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Atualizador.Windows",
-            "history.json");
-    }
-
-    public string FilePath { get; }
+    public string FilePath { get; } = filePath ?? AppDataPaths.File("history.json");
 
     public IReadOnlyList<HistoryEntry> Load()
     {
         lock (_sync)
         {
-            try
-            {
-                if (!File.Exists(FilePath))
-                {
-                    return [];
-                }
-
-                var file = JsonSerializer.Deserialize<HistoryFile>(File.ReadAllText(FilePath), _jsonOptions);
-                return file is { Version: CurrentVersion, Entries: not null }
-                    ? file.Entries
-                    : [];
-            }
-            catch (IOException)
-            {
-                return [];
-            }
-            catch (JsonException)
-            {
-                return [];
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return [];
-            }
+            return JsonFile.TryRead<HistoryFile>(FilePath) is { Version: CurrentVersion, Entries: { } entries }
+                ? entries
+                : [];
         }
     }
 
+    /// <summary>Insere o registro no topo e descarta os mais antigos além do limite.</summary>
     public void Append(HistoryEntry entry)
     {
         lock (_sync)
         {
-            var entries = Load().ToList();
-            entries.Insert(0, entry);
-            if (entries.Count > MaxEntries)
-            {
-                entries.RemoveRange(MaxEntries, entries.Count - MaxEntries);
-            }
-
-            try
-            {
-                Save(entries);
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
+            var entries = Load().Prepend(entry).Take(MaxEntries).ToArray();
+            JsonFile.TryWrite(FilePath, new HistoryFile(CurrentVersion, entries));
         }
     }
 
@@ -85,46 +39,9 @@ public sealed class HistoryStore
     {
         lock (_sync)
         {
-            try
-            {
-                if (File.Exists(FilePath))
-                {
-                    File.Delete(FilePath);
-                }
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
+            JsonFile.TryDelete(FilePath);
         }
     }
 
-    private void Save(IReadOnlyList<HistoryEntry> entries)
-    {
-        var directory = Path.GetDirectoryName(FilePath);
-        if (directory is null)
-        {
-            return;
-        }
-
-        Directory.CreateDirectory(directory);
-        var temporaryPath = $"{FilePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            var file = new HistoryFile(CurrentVersion, entries);
-            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(file, _jsonOptions));
-            File.Move(temporaryPath, FilePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-            {
-                File.Delete(temporaryPath);
-            }
-        }
-    }
-
-    private sealed record HistoryFile(int Version, IReadOnlyList<HistoryEntry> Entries);
+    private sealed record HistoryFile(int Version, IReadOnlyList<HistoryEntry>? Entries);
 }

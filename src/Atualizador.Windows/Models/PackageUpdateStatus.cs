@@ -1,5 +1,6 @@
 namespace Atualizador.Windows.Models;
 
+/// <summary>Estado de um pacote durante e depois de uma atualização ou instalação.</summary>
 public enum PackageUpdateStatus
 {
     NotStarted,
@@ -13,6 +14,7 @@ public enum PackageUpdateStatus
     RequiresInteraction
 }
 
+/// <summary>Resultado da atualização de um pacote. <see cref="ExitCode"/> é o código do WinGet, quando ele chegou a rodar.</summary>
 public sealed record PackageUpdateResult(
     UpdatablePackage Package,
     PackageUpdateStatus Status,

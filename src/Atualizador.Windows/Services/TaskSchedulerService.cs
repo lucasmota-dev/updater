@@ -4,15 +4,27 @@ using Atualizador.Windows.Models;
 
 namespace Atualizador.Windows.Services;
 
+/// <summary>Resultado de uma operação no Agendador de Tarefas.</summary>
 public sealed record ScheduledTaskResult(bool Succeeded, string Message, int ExitCode);
 
+/// <summary>
+/// Cria, desativa e remove a tarefa de atualização agendada usando o <c>schtasks.exe</c> do Windows.
+/// <para>
+/// A tarefa tem nome fixo (<see cref="TaskName"/>), roda com a conta do usuário, sem elevação
+/// (<c>/RL LIMITED</c>), só com o usuário conectado (<c>/IT</c>), e executa sempre a mesma ação:
+/// <c>"caminho\Atualizador.Windows.exe" --scheduled</c>. Nenhum texto do usuário entra na ação.
+/// </para>
+/// </summary>
 public sealed class TaskSchedulerService
 {
+    /// <summary>Nome da tarefa. Não mudar: tarefas já criadas por versões anteriores usam este nome.</summary>
     public const string TaskName = "\\Atualizador.Windows.AutoUpdate.v1";
+
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
     private readonly IProcessExecutor _processExecutor;
     private readonly string _applicationPath;
 
+    /// <param name="applicationPath">Executável que a tarefa vai abrir. Padrão: o executável atual.</param>
     public TaskSchedulerService(
         IProcessExecutor? processExecutor = null,
         string? applicationPath = null)
@@ -21,13 +33,14 @@ public sealed class TaskSchedulerService
         _applicationPath = applicationPath ?? Environment.ProcessPath ?? string.Empty;
     }
 
+    /// <summary>Cria a tarefa ou a substitui (<c>/F</c>). Com frequência "Desligado", só desativa a existente.</summary>
     public Task<ScheduledTaskResult> CreateOrUpdateAsync(
         SchedulePreferences preferences,
         CancellationToken cancellationToken = default)
     {
         if (preferences.Mode == ScheduleMode.Desligado)
         {
-            return ChangeAsync(["/Change", "/TN", TaskName, "/DISABLE"], cancellationToken);
+            return DisableAsync(cancellationToken);
         }
 
         var arguments = new List<string>
@@ -47,19 +60,16 @@ public sealed class TaskSchedulerService
             arguments.Add(ToSchtasksDay(preferences.DayOfWeek));
         }
 
-        return ChangeAsync(arguments, cancellationToken);
+        return RunSchtasksAsync(arguments, cancellationToken);
     }
 
-    public Task<ScheduledTaskResult> EnableAsync(CancellationToken cancellationToken = default) =>
-        ChangeAsync(["/Change", "/TN", TaskName, "/ENABLE"], cancellationToken);
-
     public Task<ScheduledTaskResult> DisableAsync(CancellationToken cancellationToken = default) =>
-        ChangeAsync(["/Change", "/TN", TaskName, "/DISABLE"], cancellationToken);
+        RunSchtasksAsync(["/Change", "/TN", TaskName, "/DISABLE"], cancellationToken);
 
     public Task<ScheduledTaskResult> RemoveAsync(CancellationToken cancellationToken = default) =>
-        ChangeAsync(["/Delete", "/TN", TaskName, "/F"], cancellationToken);
+        RunSchtasksAsync(["/Delete", "/TN", TaskName, "/F"], cancellationToken);
 
-    private async Task<ScheduledTaskResult> ChangeAsync(
+    private async Task<ScheduledTaskResult> RunSchtasksAsync(
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken)
     {
@@ -76,6 +86,10 @@ public sealed class TaskSchedulerService
             : new(false, "O Agendador de Tarefas recusou a operação.", result.ExitCode);
     }
 
+    /// <summary>
+    /// Monta a ação da tarefa. O caminho fica entre aspas (pode ter espaços); por isso um caminho
+    /// que já contenha aspas é recusado, para não alterar o comando.
+    /// </summary>
     private string BuildAction()
     {
         if (string.IsNullOrWhiteSpace(_applicationPath) || _applicationPath.Contains('"'))
@@ -94,12 +108,9 @@ public sealed class TaskSchedulerService
         _ => throw new ArgumentOutOfRangeException(nameof(mode))
     };
 
-    private static int GetModifier(SchedulePreferences preferences) => preferences.Mode switch
-    {
-        ScheduleMode.ACadaHora => Math.Clamp(preferences.IntervalHours, 1, 168),
-        ScheduleMode.Diario or ScheduleMode.Semanal => 1,
-        _ => 1
-    };
+    /// <summary>Valor de <c>/MO</c>: o intervalo em horas no modo por hora; 1 nos demais.</summary>
+    private static int GetModifier(SchedulePreferences preferences) =>
+        preferences.Mode == ScheduleMode.ACadaHora ? Math.Clamp(preferences.IntervalHours, 1, 168) : 1;
 
     private static string ToSchtasksDay(DayOfWeek day) => day switch
     {

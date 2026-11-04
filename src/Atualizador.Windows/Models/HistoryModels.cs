@@ -23,6 +23,7 @@ public sealed record HistoryPackageResult(
     PackageUpdateStatus Status,
     string Message);
 
+/// <summary>Um registro do histórico: uma verificação, uma atualização ou uma instalação, com o resultado de cada pacote.</summary>
 public sealed record HistoryEntry(
     Guid Id,
     DateTimeOffset StartedAt,

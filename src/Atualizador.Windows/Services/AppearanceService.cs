@@ -1,18 +1,32 @@
-using System.Globalization;
 using System.Collections.ObjectModel;
-using System.Security;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
-using Microsoft.Win32;
 using Atualizador.Windows.Models;
+using Microsoft.Win32;
 using Color = System.Windows.Media.Color;
 
 namespace Atualizador.Windows.Services;
 
+/// <summary>
+/// Aplica o tema e a cor de destaque em tempo de execução.
+/// <para>
+/// Tema: troca o dicionário <c>Theme.Light.xaml</c>/<c>Theme.Dark.xaml</c> dentro dos recursos do app.
+/// Como todas as telas usam <c>DynamicResource</c>, a troca aparece imediatamente.
+/// </para>
+/// <para>
+/// Cor de destaque: recria os pincéis <c>Accent*</c>, <c>SubtleAccentBrush</c>, <c>SelectionBrush</c> e
+/// <c>FocusBrush</c> a partir de uma única cor (do Windows, predefinida ou hexadecimal do usuário).
+/// </para>
+/// </summary>
 public sealed class AppearanceService
 {
+    /// <summary>Valor salvo em <see cref="AppearancePreferences.AccentHex"/> para "usar a cor do Windows".</summary>
+    public const string SystemAccentKey = "SYSTEM";
+
     private const string LightThemeSource = "Resources/Theme.Light.xaml";
     private const string DarkThemeSource = "Resources/Theme.Dark.xaml";
+    private static readonly Color FallbackAccent = Color.FromRgb(0x00, 0x67, 0xC0);
     private readonly AppearancePreferencesStore _preferencesStore;
 
     public AppearanceService(AppearancePreferencesStore? preferencesStore = null)
@@ -25,24 +39,30 @@ public sealed class AppearanceService
 
     public AppearancePreferences Preferences { get; private set; }
 
+    /// <summary>Tema escuro em uso (já resolvido quando o modo é "Sistema"). Usado pela barra de título.</summary>
+    public static bool IsDarkThemeApplied { get; private set; }
+
     public void SetMode(AppearanceMode mode)
     {
         Preferences = Preferences with { Mode = mode };
         ApplyTheme(mode);
-        if (Preferences.AccentHex.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase))
+        if (IsSystemAccent(Preferences.AccentHex))
         {
-            ApplyAccent("SYSTEM");
+            // A cor do Windows pode ter mudado junto com o tema; relê do registro.
+            ApplyAccent(SystemAccentKey);
         }
+
         SavePreferences();
     }
 
     public void SetSystemAccent()
     {
-        Preferences = Preferences with { AccentHex = "SYSTEM" };
-        ApplyAccent("SYSTEM");
+        Preferences = Preferences with { AccentHex = SystemAccentKey };
+        ApplyAccent(SystemAccentKey);
         SavePreferences();
     }
 
+    /// <summary>Valida e aplica uma cor hexadecimal (<c>#RRGGBB</c> ou <c>#RRGGBBAA</c>).</summary>
     public bool TrySetAccent(string? hex, out string errorMessage)
     {
         if (!TryParseHexColor(hex, out var color))
@@ -67,48 +87,79 @@ public sealed class AppearanceService
         SavePreferences();
     }
 
+    /// <summary>Converte <c>#RRGGBB</c> ou <c>#RRGGBBAA</c> (o <c>#</c> é opcional) em cor.</summary>
     public static bool TryParseHexColor(string? value, out Color color)
     {
         color = default;
-        if (string.IsNullOrWhiteSpace(value))
+        var hex = value?.Trim().TrimStart('#');
+        if (hex is null || hex.Length is not (6 or 8))
         {
             return false;
         }
 
-        var hex = value.Trim();
-        if (hex.StartsWith('#'))
-        {
-            hex = hex[1..];
-        }
-
-        if (hex.Length is not (6 or 8))
+        if (!TryParseByte(hex[..2], out var red)
+            || !TryParseByte(hex[2..4], out var green)
+            || !TryParseByte(hex[4..6], out var blue))
         {
             return false;
         }
 
-        if (!byte.TryParse(hex[..2], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var red)
-            || !byte.TryParse(hex[2..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var green)
-            || !byte.TryParse(hex[4..6], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var blue))
+        var alpha = (byte)255;
+        if (hex.Length == 8 && !TryParseByte(hex[6..8], out alpha))
         {
             return false;
         }
-
-        var alpha = hex.Length == 8
-            && byte.TryParse(hex[6..8], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var parsedAlpha)
-            ? parsedAlpha
-            : (byte)255;
 
         color = Color.FromArgb(alpha, red, green, blue);
         return true;
     }
 
+    /// <summary>Lê a cor de destaque do Windows (registro do DWM). Usa azul padrão se não conseguir.</summary>
+    public static Color GetSystemAccentColor()
+    {
+        try
+        {
+            // O DWM grava a cor como 0xAABBGGRR.
+            const string dwmKey = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\DWM";
+            if (Registry.GetValue(dwmKey, "AccentColor", null) is int dwmColor)
+            {
+                return Color.FromRgb(
+                    (byte)(dwmColor & 0xFF),
+                    (byte)((dwmColor >> 8) & 0xFF),
+                    (byte)((dwmColor >> 16) & 0xFF));
+            }
+
+            return SystemParameters.WindowGlassColor;
+        }
+        catch (Exception)
+        {
+            // Acesso negado ao registro ou valor inesperado: a cor padrão é suficiente.
+            return FallbackAccent;
+        }
+    }
+
+    private static bool IsSystemAccent(string hex) => hex.Equals(SystemAccentKey, StringComparison.OrdinalIgnoreCase);
+
+    private static bool TryParseByte(string text, out byte value) =>
+        byte.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value);
+
+    /// <summary>Substitui o dicionário de tema atual (ou o insere na primeira posição) e ajusta a barra de título.</summary>
     private static void ApplyTheme(AppearanceMode mode)
     {
-        var source = ResolveThemeSource(mode);
-        var dictionaries = System.Windows.Application.Current.Resources.MergedDictionaries;
-        var index = FindThemeDictionaryIndex(dictionaries);
-        var dictionary = new ResourceDictionary { Source = new Uri(source, UriKind.Relative) };
+        IsDarkThemeApplied = mode switch
+        {
+            AppearanceMode.Escuro => true,
+            AppearanceMode.Claro => false,
+            _ => IsSystemDarkTheme()
+        };
+        WindowTitleBar.ApplyToAll(IsDarkThemeApplied);
 
+        var dictionaries = System.Windows.Application.Current.Resources.MergedDictionaries;
+        var dictionary = new ResourceDictionary
+        {
+            Source = new Uri(IsDarkThemeApplied ? DarkThemeSource : LightThemeSource, UriKind.Relative)
+        };
+        var index = FindThemeDictionaryIndex(dictionaries);
         if (index >= 0)
         {
             dictionaries[index] = dictionary;
@@ -119,16 +170,17 @@ public sealed class AppearanceService
         }
     }
 
+    /// <summary>Gera todos os pincéis derivados da cor de destaque e os publica nos recursos do app.</summary>
     private static void ApplyAccent(string hex)
     {
         Color accent;
-        if (hex.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase))
+        if (IsSystemAccent(hex))
         {
             accent = GetSystemAccentColor();
         }
         else if (!TryParseHexColor(hex, out accent))
         {
-            accent = Color.FromRgb(0, 103, 192);
+            accent = FallbackAccent;
         }
 
         var resources = System.Windows.Application.Current.Resources;
@@ -136,59 +188,22 @@ public sealed class AppearanceService
         resources["AccentBrush"] = CreateBrush(accent);
         resources["AccentBrushHover"] = CreateBrush(AdjustBrightness(accent, 0.86));
         resources["AccentBrushPressed"] = CreateBrush(AdjustBrightness(accent, 0.72));
-        resources["AccentForegroundBrush"] = CreateBrush(GetLuminance(accent) > 0.62
-            ? Colors.Black
-            : Colors.White);
+        // Texto sobre a cor de destaque: preto em cores claras, branco nas demais (contraste).
+        resources["AccentForegroundBrush"] = CreateBrush(GetLuminance(accent) > 0.62 ? Colors.Black : Colors.White);
         resources["SubtleAccentBrush"] = CreateBrush(Color.FromArgb(0x18, accent.R, accent.G, accent.B));
         resources["SelectionBrush"] = CreateBrush(Color.FromArgb(0x45, accent.R, accent.G, accent.B));
         resources["FocusBrush"] = CreateBrush(accent);
     }
 
-    public static Color GetSystemAccentColor()
-    {
-        try
-        {
-            const string dwmKey = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\DWM";
-            if (Registry.GetValue(dwmKey, "AccentColor", null) is int dwmColor)
-            {
-                var r = (byte)(dwmColor & 0xFF);
-                var g = (byte)((dwmColor >> 8) & 0xFF);
-                var b = (byte)((dwmColor >> 16) & 0xFF);
-                return Color.FromRgb(r, g, b);
-            }
-
-            return SystemParameters.WindowGlassColor;
-        }
-        catch (SecurityException)
-        {
-            return Color.FromRgb(0, 103, 192);
-        }
-        catch (Exception)
-        {
-            return Color.FromRgb(0, 103, 192);
-        }
-    }
-
-    private static string ResolveThemeSource(AppearanceMode mode)
-    {
-        var useDarkTheme = mode switch
-        {
-            AppearanceMode.Escuro => true,
-            AppearanceMode.Claro => false,
-            _ => IsSystemDarkTheme()
-        };
-
-        return useDarkTheme ? DarkThemeSource : LightThemeSource;
-    }
-
+    /// <summary>Lê a opção "Modo de aplicativo" do Windows (0 = escuro).</summary>
     private static bool IsSystemDarkTheme()
     {
         try
         {
             const string personalizeKey = @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
-            return Registry.GetValue(personalizeKey, "AppsUseLightTheme", 1) is int value && value == 0;
+            return Registry.GetValue(personalizeKey, "AppsUseLightTheme", 1) is 0;
         }
-        catch (SecurityException)
+        catch (System.Security.SecurityException)
         {
             return false;
         }
@@ -198,8 +213,7 @@ public sealed class AppearanceService
     {
         for (var index = 0; index < dictionaries.Count; index++)
         {
-            var source = dictionaries[index].Source?.OriginalString;
-            if (source is LightThemeSource or DarkThemeSource)
+            if (dictionaries[index].Source?.OriginalString is LightThemeSource or DarkThemeSource)
             {
                 return index;
             }
@@ -210,11 +224,12 @@ public sealed class AppearanceService
 
     private void SavePreferences() => _preferencesStore.Save(Preferences);
 
+    /// <summary>Corrige valores inválidos vindos de um arquivo editado à mão.</summary>
     private static AppearancePreferences Normalize(AppearancePreferences preferences)
     {
         var mode = Enum.IsDefined(preferences.Mode) ? preferences.Mode : AppearanceMode.Sistema;
-        var accent = preferences.AccentHex.Equals("SYSTEM", StringComparison.OrdinalIgnoreCase)
-            ? "SYSTEM"
+        var accent = IsSystemAccent(preferences.AccentHex)
+            ? SystemAccentKey
             : TryParseHexColor(preferences.AccentHex, out var color)
                 ? ToHex(color)
                 : AppearancePreferences.DefaultAccentHex;
@@ -223,6 +238,7 @@ public sealed class AppearanceService
 
     private static string ToHex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
+    /// <summary>Pincéis congelados são imutáveis e mais leves para o WPF.</summary>
     private static SolidColorBrush CreateBrush(Color color)
     {
         var brush = new SolidColorBrush(color);
@@ -231,12 +247,13 @@ public sealed class AppearanceService
     }
 
     private static Color AdjustBrightness(Color color, double factor) => Color.FromRgb(
-        Clamp(color.R * factor),
-        Clamp(color.G * factor),
-        Clamp(color.B * factor));
+        ClampToByte(color.R * factor),
+        ClampToByte(color.G * factor),
+        ClampToByte(color.B * factor));
 
-    private static byte Clamp(double value) => (byte)Math.Clamp((int)Math.Round(value), 0, 255);
+    private static byte ClampToByte(double value) => (byte)Math.Clamp((int)Math.Round(value), 0, 255);
 
+    /// <summary>Luminância relativa aproximada (0 = preto, 1 = branco).</summary>
     private static double GetLuminance(Color color) =>
         (0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B) / 255;
 }

@@ -18,6 +18,7 @@ public sealed class AppSelfUpdateService(HttpClient? httpClient = null, string? 
     private const string UninstallKey =
         @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{B7B9E7A4-3A09-4DB1-9F5D-0F994D700A01}_is1";
 
+    // Limites contra respostas inesperadamente grandes (o instalador real tem dezenas de MB).
     private const long MaxInstallerBytes = 200L * 1024 * 1024;
     private const int MaxChecksumsBytes = 64 * 1024;
 
@@ -43,6 +44,7 @@ public sealed class AppSelfUpdateService(HttpClient? httpClient = null, string? 
         }
     }
 
+    /// <summary>Compara dois caminhos de pasta ignorando maiúsculas e a barra final.</summary>
     public static bool IsSameDirectory(string first, string second)
     {
         try
@@ -118,6 +120,8 @@ public sealed class AppSelfUpdateService(HttpClient? httpClient = null, string? 
                 return null;
             }
 
+            // Grava em ".partial" e calcula o SHA-256 durante o download. O arquivo só recebe o nome
+            // final depois de conferido; um download interrompido ou adulterado nunca é executado.
             byte[] actualHash;
             await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
             await using (var target = new FileStream(partialPath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -191,6 +195,7 @@ public sealed class AppSelfUpdateService(HttpClient? httpClient = null, string? 
         }
     }
 
+    /// <summary>Baixa um arquivo de texto pequeno (SHA256SUMS.txt). Retorna null se falhar ou passar do limite.</summary>
     private async Task<string?> DownloadTextAsync(Uri url, CancellationToken cancellationToken)
     {
         using var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
@@ -219,7 +224,7 @@ public sealed class AppSelfUpdateService(HttpClient? httpClient = null, string? 
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
         client.DefaultRequestHeaders.UserAgent.ParseAdd(
-            string.Create(CultureInfo.InvariantCulture, $"Atualizador-Windows/{UpdateCheckService.Format(UpdateCheckService.CurrentVersion)}"));
+            string.Create(CultureInfo.InvariantCulture, $"App-Updater/{UpdateCheckService.Format(UpdateCheckService.CurrentVersion)}"));
         return client;
     }
 }

@@ -1,12 +1,28 @@
-using System.Globalization;
 using Atualizador.Windows.Models;
 
 namespace Atualizador.Windows.Services;
 
+/// <summary>Pacotes lidos da tabela e avisos sobre linhas que não puderam ser interpretadas.</summary>
 public sealed record WingetParseResult(
     IReadOnlyList<UpdatablePackage> Packages,
     IReadOnlyList<string> Warnings);
 
+/// <summary>
+/// Interpreta as tabelas de texto do WinGet (<c>list --upgrade-available</c> e <c>search</c>).
+/// <para>
+/// O WinGet não oferece saída JSON para esses comandos, então a leitura é por colunas:
+/// encontra a linha de cabeçalho (em inglês, português ou espanhol), guarda a posição de cada
+/// coluna, pula a linha de traços e recorta cada linha de dados nessas posições.
+/// </para>
+/// </summary>
+/// <example>
+/// <code>
+/// Nome              ID                Versão   Disponível Origem
+/// --------------------------------------------------------------
+/// Microsoft Edge    Microsoft.Edge    155.0    156.0      winget
+/// 1 atualizações disponíveis.
+/// </code>
+/// </example>
 public static class WingetOutputParser
 {
     private static readonly string[] NameHeaders = ["Name", "Nome", "Nombre"];
@@ -16,10 +32,23 @@ public static class WingetOutputParser
     private static readonly string[] SourceHeaders = ["Source", "Origem", "Origen"];
     private static readonly string[] MatchHeaders = ["Match", "Correspondência", "Coincidencia"];
 
-    public static WingetParseResult ParseUpgradeList(string output)
+    // Chaves internas das colunas (independem do idioma do WinGet).
+    private const string NameColumn = "nome";
+    private const string IdColumn = "id";
+    private const string VersionColumn = "versão";
+    private const string AvailableColumn = "disponível";
+    private const string SourceColumn = "origem";
+    private const string MatchColumn = "correspondência";
+
+    /// <summary>
+    /// Lê a tabela de <c>winget list --upgrade-available</c>. Ignora pacotes duplicados.
+    /// Quando a consulta usa <c>--source winget</c>, o WinGet omite a coluna Origem; nesse caso
+    /// todos os pacotes recebem <paramref name="defaultSource"/>.
+    /// </summary>
+    public static WingetParseResult ParseUpgradeList(string output, string defaultSource = "winget")
     {
-        var lines = output.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        var header = FindHeader(lines);
+        var lines = SplitLines(output);
+        var header = FindHeader(lines, [NameColumn, IdColumn, VersionColumn, AvailableColumn], [SourceColumn]);
         if (header is null)
         {
             return new([], ["O cabeçalho da lista de atualizações não foi reconhecido."]);
@@ -28,45 +57,30 @@ public static class WingetOutputParser
         var packages = new List<UpdatablePackage>();
         var packageKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var warnings = new List<string>();
-        var separatorFound = false;
 
-        for (var index = header.LineIndex + 1; index < lines.Length; index++)
+        foreach (var line in EnumerateDataLines(lines, header.LineIndex))
         {
-            var line = lines[index];
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                continue;
-            }
-
-            if (IsSeparator(line))
-            {
-                separatorFound = true;
-                continue;
-            }
-
-            if (!separatorFound || IsFooter(line))
-            {
-                continue;
-            }
-
-            var fields = ReadFields(line, header.Columns);
-            if (fields.Id is null || fields.Source is null)
+            var fields = SliceColumns(line, header.Columns);
+            var id = EmptyToNull(fields.GetValueOrDefault(IdColumn));
+            var source = header.Has(SourceColumn) ? EmptyToNull(fields.GetValueOrDefault(SourceColumn)) : defaultSource;
+            if (id is null || source is null)
             {
                 warnings.Add("Uma linha de atualização foi ignorada por não conter ID e origem.");
                 continue;
             }
 
+            var installedVersion = fields.GetValueOrDefault(VersionColumn);
             var package = new UpdatablePackage(
-                fields.Name ?? fields.Id,
-                fields.Id,
-                NormalizeVersion(fields.InstalledVersion),
-                NormalizeVersion(fields.AvailableVersion),
-                fields.Source,
-                IsUnknownVersion(fields.InstalledVersion));
-            var key = $"{package.Id}\u001f{package.Source}";
-            if (!packageKeys.Add(key))
+                EmptyToNull(fields.GetValueOrDefault(NameColumn)) ?? id,
+                id,
+                NormalizeVersion(installedVersion),
+                NormalizeVersion(fields.GetValueOrDefault(AvailableColumn)),
+                source,
+                IsUnknownVersion(installedVersion));
+
+            if (!packageKeys.Add(PackageKey(id, source)))
             {
-                warnings.Add($"O pacote {package.Id} foi duplicado para a origem {package.Source} e foi ignorado.");
+                warnings.Add($"O pacote {id} foi duplicado para a origem {source} e foi ignorado.");
                 continue;
             }
 
@@ -76,10 +90,14 @@ public static class WingetOutputParser
         return new(packages, warnings);
     }
 
+    /// <summary>
+    /// Lê a tabela de <c>winget search</c>. Só Nome e ID são obrigatórios; Versão, Correspondência
+    /// e Origem são usadas quando aparecem. O publicador é inferido do ID (<c>Mozilla.Firefox</c> → Mozilla).
+    /// </summary>
     public static IReadOnlyList<InstallablePackage> ParseSearchResults(string output, string defaultSource = "winget")
     {
-        var lines = output.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        var header = FindSearchHeader(lines);
+        var lines = SplitLines(output);
+        var header = FindHeader(lines, [NameColumn, IdColumn], [VersionColumn, MatchColumn, SourceColumn]);
         if (header is null)
         {
             return [];
@@ -87,9 +105,99 @@ public static class WingetOutputParser
 
         var packages = new List<InstallablePackage>();
         var packageKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var separatorFound = false;
 
-        for (var index = header.LineIndex + 1; index < lines.Length; index++)
+        foreach (var line in EnumerateDataLines(lines, header.LineIndex))
+        {
+            var fields = SliceColumns(line, header.Columns);
+            var id = EmptyToNull(fields.GetValueOrDefault(IdColumn));
+            if (id is null)
+            {
+                continue;
+            }
+
+            var source = EmptyToNull(fields.GetValueOrDefault(SourceColumn)) ?? defaultSource;
+            if (!packageKeys.Add(PackageKey(id, source)))
+            {
+                continue;
+            }
+
+            packages.Add(new InstallablePackage(
+                EmptyToNull(fields.GetValueOrDefault(NameColumn)) ?? id,
+                id,
+                EmptyToNull(fields.GetValueOrDefault(VersionColumn)) ?? "Desconhecida",
+                source,
+                InstallablePackage.InferPublisher(id),
+                fields.GetValueOrDefault(MatchColumn) ?? string.Empty));
+        }
+
+        return packages;
+    }
+
+    private static string[] SplitLines(string output) =>
+        output.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+
+    private static string PackageKey(string id, string source) => $"{id}\u001f{source}";
+
+    /// <summary>
+    /// Procura a primeira linha que contém todos os cabeçalhos obrigatórios. Os opcionais entram
+    /// na lista de colunas só quando aparecem na linha.
+    /// </summary>
+    private static HeaderInfo? FindHeader(string[] lines, string[] required, string[] optional)
+    {
+        for (var lineIndex = 0; lineIndex < lines.Length; lineIndex++)
+        {
+            var line = lines[lineIndex];
+            var requiredColumns = required.Select(name => FindColumn(line, name)).ToArray();
+            if (requiredColumns.Any(column => column.Position < 0))
+            {
+                continue;
+            }
+
+            var columns = requiredColumns
+                .Concat(optional.Select(name => FindColumn(line, name)).Where(column => column.Position >= 0))
+                .ToArray();
+            // Dois cabeçalhos na mesma posição indicam uma linha que não é o cabeçalho real.
+            if (columns.Select(column => column.Position).Distinct().Count() == columns.Length)
+            {
+                return new HeaderInfo(lineIndex, columns.OrderBy(column => column.Position).ToArray());
+            }
+        }
+
+        return null;
+    }
+
+    private static ColumnPosition FindColumn(string line, string columnName)
+    {
+        var headers = columnName switch
+        {
+            NameColumn => NameHeaders,
+            IdColumn => IdHeaders,
+            VersionColumn => VersionHeaders,
+            AvailableColumn => AvailableHeaders,
+            SourceColumn => SourceHeaders,
+            _ => MatchHeaders
+        };
+
+        foreach (var header in headers)
+        {
+            var position = line.IndexOf(header, StringComparison.OrdinalIgnoreCase);
+            if (position >= 0)
+            {
+                return new ColumnPosition(columnName, position);
+            }
+        }
+
+        return new ColumnPosition(columnName, -1);
+    }
+
+    /// <summary>
+    /// Linhas de dados: depois do cabeçalho e da linha de traços, sem linhas vazias e sem o
+    /// rodapé ("N atualizações disponíveis").
+    /// </summary>
+    private static IEnumerable<string> EnumerateDataLines(string[] lines, int headerIndex)
+    {
+        var separatorFound = false;
+        for (var index = headerIndex + 1; index < lines.Length; index++)
         {
             var line = lines[index];
             if (string.IsNullOrWhiteSpace(line))
@@ -103,99 +211,39 @@ public static class WingetOutputParser
                 continue;
             }
 
-            if (!separatorFound || IsFooter(line))
+            if (separatorFound && !IsFooter(line))
             {
-                continue;
-            }
-
-            var fields = ReadSearchFields(line, header.Columns);
-            if (string.IsNullOrWhiteSpace(fields.Id))
-            {
-                continue;
-            }
-
-            var name = !string.IsNullOrWhiteSpace(fields.Name) ? fields.Name : fields.Id;
-            var version = !string.IsNullOrWhiteSpace(fields.Version) ? fields.Version : "Desconhecida";
-            var source = !string.IsNullOrWhiteSpace(fields.Source) ? fields.Source : defaultSource;
-            var publisher = InstallablePackage.InferPublisher(fields.Id);
-            var match = fields.Match ?? string.Empty;
-
-            var key = $"{fields.Id}\u001f{source}";
-            if (!packageKeys.Add(key))
-            {
-                continue;
-            }
-
-            packages.Add(new InstallablePackage(name, fields.Id, version, source, publisher, match));
-        }
-
-        return packages;
-    }
-
-    private static HeaderInfo? FindHeader(string[] lines)
-    {
-        for (var lineIndex = 0; lineIndex < lines.Length; lineIndex++)
-        {
-            var line = lines[lineIndex];
-            var columns = new List<ColumnPosition>
-            {
-                FindColumn(line, NameHeaders, "nome"),
-                FindColumn(line, IdHeaders, "id"),
-                FindColumn(line, VersionHeaders, "versão instalada"),
-                FindColumn(line, AvailableHeaders, "versão disponível"),
-                FindColumn(line, SourceHeaders, "origem")
-            };
-
-            if (columns.All(column => column.Position >= 0)
-                && columns.Select(column => column.Position).Distinct().Count() == columns.Count)
-            {
-                return new HeaderInfo(lineIndex, columns.OrderBy(column => column.Position).ToArray());
+                yield return line;
             }
         }
-
-        return null;
     }
 
-    private static ColumnPosition FindColumn(string line, IEnumerable<string> headers, string name)
+    /// <summary>Recorta a linha nas posições das colunas: cada valor vai até o início da coluna seguinte.</summary>
+    private static Dictionary<string, string> SliceColumns(string line, IReadOnlyList<ColumnPosition> columns)
     {
-        foreach (var header in headers)
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        for (var index = 0; index < columns.Count; index++)
         {
-            var position = line.IndexOf(header, StringComparison.OrdinalIgnoreCase);
-            if (position >= 0)
-            {
-                return new ColumnPosition(name, position, header.Length);
-            }
+            var start = Math.Min(columns[index].Position, line.Length);
+            var end = index + 1 < columns.Count ? Math.Min(columns[index + 1].Position, line.Length) : line.Length;
+            values[columns[index].Name] = line[start..Math.Max(start, end)].Trim();
         }
 
-        return new ColumnPosition(name, -1, 0);
+        return values;
     }
 
-    private static ParsedFields ReadFields(string line, IReadOnlyList<ColumnPosition> columns)
+    private static bool IsSeparator(string line)
     {
-        var values = columns.Select((column, index) =>
-        {
-            var end = index + 1 < columns.Count ? columns[index + 1].Position : line.Length;
-            var start = Math.Min(column.Position, line.Length);
-            var length = Math.Max(0, Math.Min(end, line.Length) - start);
-            return (column.Name, Value: line.Substring(start, length).Trim());
-        }).ToDictionary(item => item.Name, item => item.Value, StringComparer.Ordinal);
-
-        values.TryGetValue("nome", out var name);
-        values.TryGetValue("id", out var id);
-        values.TryGetValue("versão instalada", out var installed);
-        values.TryGetValue("versão disponível", out var available);
-        values.TryGetValue("origem", out var source);
-        return new(name, EmptyToNull(id), installed, available, EmptyToNull(source));
+        var trimmed = line.Trim();
+        return trimmed.Length > 2 && trimmed.All(character => character is '-' or '─' or '—');
     }
-
-    private static bool IsSeparator(string line) =>
-        line.Trim().Length > 2 && line.Trim().All(character => character is '-' or '─' or '—');
 
     private static bool IsFooter(string line) =>
         line.Contains("upgrade", StringComparison.OrdinalIgnoreCase)
         || line.Contains("atualiza", StringComparison.OrdinalIgnoreCase)
         || line.Contains("actualiza", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Versões "Unknown", "Desconhecida", "-" ou vazias viram <c>null</c>.</summary>
     private static string? NormalizeVersion(string? version)
     {
         var normalized = EmptyToNull(version);
@@ -215,68 +263,10 @@ public static class WingetOutputParser
     private static string? EmptyToNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private sealed record HeaderInfo(int LineIndex, IReadOnlyList<ColumnPosition> Columns);
-
-    private sealed record ColumnPosition(string Name, int Position, int HeaderLength);
-
-    private static HeaderInfo? FindSearchHeader(string[] lines)
+    private sealed record HeaderInfo(int LineIndex, IReadOnlyList<ColumnPosition> Columns)
     {
-        for (var lineIndex = 0; lineIndex < lines.Length; lineIndex++)
-        {
-            var line = lines[lineIndex];
-            var nameCol = FindColumn(line, NameHeaders, "nome");
-            var idCol = FindColumn(line, IdHeaders, "id");
-            if (nameCol.Position < 0 || idCol.Position < 0)
-            {
-                continue;
-            }
-
-            var columns = new List<ColumnPosition> { nameCol, idCol };
-            var verCol = FindColumn(line, VersionHeaders, "versão");
-            if (verCol.Position >= 0) columns.Add(verCol);
-            var matchCol = FindColumn(line, MatchHeaders, "match");
-            if (matchCol.Position >= 0) columns.Add(matchCol);
-            var sourceCol = FindColumn(line, SourceHeaders, "origem");
-            if (sourceCol.Position >= 0) columns.Add(sourceCol);
-
-            if (columns.Select(c => c.Position).Distinct().Count() == columns.Count)
-            {
-                return new HeaderInfo(lineIndex, columns.OrderBy(c => c.Position).ToArray());
-            }
-        }
-
-        return null;
+        public bool Has(string columnName) => Columns.Any(column => column.Name == columnName);
     }
 
-    private static SearchParsedFields ReadSearchFields(string line, IReadOnlyList<ColumnPosition> columns)
-    {
-        var values = columns.Select((column, index) =>
-        {
-            var end = index + 1 < columns.Count ? columns[index + 1].Position : line.Length;
-            var start = Math.Min(column.Position, line.Length);
-            var length = Math.Max(0, Math.Min(end, line.Length) - start);
-            return (column.Name, Value: line.Substring(start, length).Trim());
-        }).ToDictionary(item => item.Name, item => item.Value, StringComparer.Ordinal);
-
-        values.TryGetValue("nome", out var name);
-        values.TryGetValue("id", out var id);
-        values.TryGetValue("versão", out var version);
-        values.TryGetValue("match", out var match);
-        values.TryGetValue("origem", out var source);
-        return new(name, EmptyToNull(id), version, match, EmptyToNull(source));
-    }
-
-    private sealed record SearchParsedFields(
-        string? Name,
-        string? Id,
-        string? Version,
-        string? Match,
-        string? Source);
-
-    private sealed record ParsedFields(
-        string? Name,
-        string? Id,
-        string? InstalledVersion,
-        string? AvailableVersion,
-        string? Source);
+    private sealed record ColumnPosition(string Name, int Position);
 }

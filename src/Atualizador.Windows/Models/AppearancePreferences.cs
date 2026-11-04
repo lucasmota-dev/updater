@@ -1,5 +1,9 @@
 namespace Atualizador.Windows.Models;
 
+/// <summary>
+/// Conteúdo de <c>preferences.json</c>. <see cref="AccentHex"/> é <c>#RRGGBB</c> ou <c>SYSTEM</c>.
+/// <see cref="Version"/> permite descartar arquivos de formatos antigos com segurança.
+/// </summary>
 public sealed record AppearancePreferences(
     int Version,
     AppearanceMode Mode,

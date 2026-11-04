@@ -7,6 +7,10 @@ using Atualizador.Windows.Services;
 
 namespace Atualizador.Windows.ViewModels;
 
+/// <summary>
+/// Página Histórico: lista os registros do <see cref="HistoryStore"/>, com filtro por data e por
+/// resultado, e mostra os pacotes do registro selecionado.
+/// </summary>
 public sealed class HistoryPageViewModel : PageViewModel
 {
     private readonly HistoryStore _historyStore;
@@ -16,7 +20,7 @@ public sealed class HistoryPageViewModel : PageViewModel
     private HistoryEntry? _selectedEntry;
 
     public HistoryPageViewModel(HistoryStore historyStore)
-        : base("Histórico", "Acompanhe as verificações e atualizações realizadas neste computador.", "≡")
+        : base("Histórico", "Verificações, atualizações e instalações feitas neste computador.", "\uE81C")
     {
         _historyStore = historyStore;
         Entries = [];
@@ -105,6 +109,7 @@ public sealed class HistoryPageViewModel : PageViewModel
         Load();
     }
 
+    /// <summary>Abre a pasta de dados no Explorador de Arquivos (caminho passado como argumento, sem shell).</summary>
     private void OpenFolder()
     {
         var directory = Path.GetDirectoryName(_historyStore.FilePath);
@@ -130,11 +135,9 @@ public sealed class HistoryPageViewModel : PageViewModel
             return false;
         }
 
-        var matchesStatus = SelectedStatusFilter switch
-        {
-            HistoryStatusFilter.Todos => true,
-            _ => entry.Status.ToString().Equals(SelectedStatusFilter.ToString(), StringComparison.Ordinal)
-        };
+        // HistoryStatusFilter repete os nomes de HistoryEntryStatus (mais "Todos"); a comparação é pelo nome.
+        var matchesStatus = SelectedStatusFilter == HistoryStatusFilter.Todos
+            || entry.Status.ToString().Equals(SelectedStatusFilter.ToString(), StringComparison.Ordinal);
         var matchesDate = SelectedDateFilter switch
         {
             HistoryDateFilter.Todos => true,

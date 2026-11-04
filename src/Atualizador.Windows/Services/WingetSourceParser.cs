@@ -2,6 +2,10 @@ using Atualizador.Windows.Models;
 
 namespace Atualizador.Windows.Services;
 
+/// <summary>
+/// Lê a tabela de <c>winget source list</c> (colunas Nome, Argumento, Explícito). As colunas são
+/// separadas por espaços, e nenhum dos três valores contém espaços, então basta dividir a linha.
+/// </summary>
 public static class WingetSourceParser
 {
     public static IReadOnlyList<WingetSource> Parse(string output)
@@ -31,11 +35,9 @@ public static class WingetSourceParser
                 continue;
             }
 
-            sources.Add(new WingetSource(
-                fields[0],
-                fields[1],
-                fields[2].Equals("true", StringComparison.OrdinalIgnoreCase)
-                    || fields[2].Equals("verdadeiro", StringComparison.OrdinalIgnoreCase)));
+            var isExplicit = fields[2].Equals("true", StringComparison.OrdinalIgnoreCase)
+                || fields[2].Equals("verdadeiro", StringComparison.OrdinalIgnoreCase);
+            sources.Add(new WingetSource(fields[0], fields[1], isExplicit));
         }
 
         return sources;

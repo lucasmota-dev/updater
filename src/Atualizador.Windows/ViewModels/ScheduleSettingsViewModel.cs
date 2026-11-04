@@ -3,6 +3,11 @@ using Atualizador.Windows.Services;
 
 namespace Atualizador.Windows.ViewModels;
 
+/// <summary>
+/// Seção "Agendamento" de Configurações. Salvar cria ou substitui a tarefa no Agendador de Tarefas
+/// e grava <c>schedule.json</c>, que a execução agendada (<c>--scheduled</c>) lê depois.
+/// No escopo "selecionados", os pacotes marcados na página Atualizações são copiados para o arquivo.
+/// </summary>
 public sealed class ScheduleSettingsViewModel : ViewModelBase
 {
     private readonly ScheduleStore _scheduleStore;
@@ -30,9 +35,9 @@ public sealed class ScheduleSettingsViewModel : ViewModelBase
         _intervalHours = preferences.IntervalHours;
         _dayOfWeek = preferences.DayOfWeek;
         _scope = preferences.Scope;
-        SaveCommand = new AsyncDelegateCommand(SaveAsync, () => true);
+        SaveCommand = new AsyncDelegateCommand(SaveAsync);
         DisableCommand = new AsyncDelegateCommand(DisableAsync, () => Mode != ScheduleMode.Desligado);
-        RemoveCommand = new AsyncDelegateCommand(RemoveAsync, () => true);
+        RemoveCommand = new AsyncDelegateCommand(RemoveAsync);
     }
 
     public IReadOnlyList<ScheduleMode> AvailableModes { get; } = Enum.GetValues<ScheduleMode>();
@@ -103,7 +108,18 @@ public sealed class ScheduleSettingsViewModel : ViewModelBase
             DayOfWeek,
             Scope,
             selectedPackages);
-        var result = await _taskSchedulerService.CreateOrUpdateAsync(preferences);
+        ScheduledTaskResult result;
+        try
+        {
+            result = await _taskSchedulerService.CreateOrUpdateAsync(preferences);
+        }
+        catch (InvalidOperationException exception)
+        {
+            // Caminho do executável inválido para a ação da tarefa.
+            StatusMessage = exception.Message;
+            return;
+        }
+
         if (!result.Succeeded)
         {
             StatusMessage = result.Message;
@@ -132,7 +148,7 @@ public sealed class ScheduleSettingsViewModel : ViewModelBase
 
     private async Task RemoveAsync()
     {
-        if (!_confirmation.Confirm("Remover agendamento", "Deseja remover o agendamento do Atualizador Windows?"))
+        if (!_confirmation.Confirm("Remover agendamento", "Deseja remover o agendamento do App Updater?"))
         {
             return;
         }

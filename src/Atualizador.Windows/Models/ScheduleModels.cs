@@ -14,6 +14,10 @@ public enum ScheduleScope
     PacotesSelecionados
 }
 
+/// <summary>
+/// Conteúdo de <c>schedule.json</c>. <see cref="SelectedPackages"/> só é usado no escopo
+/// <see cref="ScheduleScope.PacotesSelecionados"/>; <see cref="IntervalHours"/> só no modo <see cref="ScheduleMode.ACadaHora"/>.
+/// </summary>
 public sealed record SchedulePreferences(
     int Version,
     ScheduleMode Mode,

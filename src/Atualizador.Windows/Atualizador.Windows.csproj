@@ -6,15 +6,25 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- Windows Forms só é usado pelo ícone da área de notificação (NotifyIcon). -->
     <UseWindowsForms>true</UseWindowsForms>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <!-- O nome técnico (namespace, executável, pasta de dados, tarefas agendadas) continua "Atualizador.Windows"
+         para não quebrar instalações, agendamentos e a atualização automática de quem já usa o app. -->
     <RootNamespace>Atualizador.Windows</RootNamespace>
     <AssemblyName>Atualizador.Windows</AssemblyName>
     <!-- O workflow de release passa -p:Version=yyyy.MM.dd.NN; compilações locais ficam em 0.0.0.0. -->
     <Version>0.0.0.0</Version>
-    <Product>Atualizador Windows</Product>
-    <Description>Atualizador de aplicativos Windows com WinGet.</Description>
-    <Authors>Atualizador Windows</Authors>
+    <!-- Mantém a "Versão do produto" do executável igual à versão (sem o "+hash" do commit);
+         o SignPath confere esse campo antes de assinar. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>App Updater</Product>
+    <AssemblyTitle>App Updater</AssemblyTitle>
+    <Description>Atualize e instale aplicativos do Windows com o WinGet.</Description>
+    <Authors>Lucas Mota</Authors>
+    <Company>Lucas Mota</Company>
+    <Copyright>Copyright © Lucas Mota</Copyright>
+    <RepositoryUrl>https://github.com/lucasmota-dev/updater</RepositoryUrl>
     <ApplicationIcon>..\..\assets\icons\Atualizador.ico</ApplicationIcon>
   </PropertyGroup>
 

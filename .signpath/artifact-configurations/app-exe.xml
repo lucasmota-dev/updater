@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Configuração "app-exe" no SignPath: assina o executável do App Updater.
+     O artefato do GitHub é um ZIP com Atualizador.Windows.exe na raiz.
+     product-name/product-version impedem assinar um binário com outros metadados (exigência do SignPath Foundation). -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" />
+  </parameters>
+  <zip-file>
+    <pe-file path="Atualizador.Windows.exe" product-name="App Updater" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

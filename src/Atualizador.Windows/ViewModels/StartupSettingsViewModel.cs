@@ -2,6 +2,10 @@ using Atualizador.Windows.Services;
 
 namespace Atualizador.Windows.ViewModels;
 
+/// <summary>
+/// Seção "Inicialização" de Configurações. A preferência só é salva depois que o Agendador de
+/// Tarefas confirmar a criação ou a remoção da tarefa, para a tela não mostrar um estado falso.
+/// </summary>
 public sealed class StartupSettingsViewModel : ViewModelBase
 {
     private readonly StartupTaskService _startupTaskService;
@@ -35,7 +39,17 @@ public sealed class StartupSettingsViewModel : ViewModelBase
 
     private async Task ApplyAsync()
     {
-        var result = await _startupTaskService.SetEnabledAsync(IsEnabled);
+        ScheduledTaskResult result;
+        try
+        {
+            result = await _startupTaskService.SetEnabledAsync(IsEnabled);
+        }
+        catch (InvalidOperationException exception)
+        {
+            StatusMessage = exception.Message;
+            return;
+        }
+
         if (!result.Succeeded)
         {
             StatusMessage = result.Message;

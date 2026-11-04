@@ -20,3 +20,11 @@ TestResults/
 .env
 .env.*
 !.env.example
+
+# Arquivos de desenvolvimento local (assistentes de IA, roteiro das etapas, scripts pessoais).
+# Ficam só na máquina do desenvolvedor e não fazem parte do projeto publicado.
+AGENTS.md
+ARQUIVOS.md
+docs/
+build-test.ps1
+build-output.txt

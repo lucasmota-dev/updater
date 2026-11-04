@@ -1,48 +1,15 @@
-using System.IO;
-using System.Text.Json;
-
 namespace Atualizador.Windows.Services;
 
-public sealed class TrayPreferencesStore
+/// <summary>Guarda se fechar a janela deve apenas escondê-la na área de notificação (<c>tray.json</c>).</summary>
+public sealed class TrayPreferencesStore(string? filePath = null)
 {
-    public TrayPreferencesStore(string? filePath = null)
-    {
-        FilePath = filePath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Atualizador.Windows",
-            "tray.json");
-    }
+    public string FilePath { get; } = filePath ?? AppDataPaths.File("tray.json");
 
-    public string FilePath { get; }
+    /// <summary>Retorna a preferência salva. O padrão é <c>false</c>: fechar encerra o app.</summary>
+    public bool Load() => JsonFile.TryRead<TrayPreferences>(FilePath)?.MinimizeToTray == true;
 
-    public bool Load()
-    {
-        try
-        {
-            return File.Exists(FilePath)
-                && JsonSerializer.Deserialize<TrayPreferences>(File.ReadAllText(FilePath))?.MinimizeToTray == true;
-        }
-        catch (IOException)
-        {
-            return false;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
-    public void Save(bool minimizeToTray)
-    {
-        var directory = Path.GetDirectoryName(FilePath);
-        if (directory is null)
-        {
-            return;
-        }
-
-        Directory.CreateDirectory(directory);
-        File.WriteAllText(FilePath, JsonSerializer.Serialize(new TrayPreferences(1, minimizeToTray)));
-    }
+    public void Save(bool minimizeToTray) =>
+        JsonFile.TryWrite(FilePath, new TrayPreferences(1, minimizeToTray));
 
     private sealed record TrayPreferences(int Version, bool MinimizeToTray);
 }

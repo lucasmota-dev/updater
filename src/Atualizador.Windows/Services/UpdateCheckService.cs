@@ -8,46 +8,85 @@ namespace Atualizador.Windows.Services;
 /// <summary>Release mais nova. Os links do instalador e das somas só existem quando a release publica os dois arquivos.</summary>
 public sealed record AvailableRelease(Version Version, Uri PageUrl, Uri? InstallerUrl = null, Uri? ChecksumsUrl = null);
 
+/// <summary>Resultado de uma consulta de nova versão do próprio aplicativo.</summary>
+public enum UpdateCheckOutcome
+{
+    /// <summary>Compilação local (0.0.0.0): a consulta não é feita.</summary>
+    NotApplicable,
+
+    /// <summary>A versão em uso é a mais recente publicada.</summary>
+    UpToDate,
+
+    /// <summary>Há uma release mais nova; veja <see cref="UpdateCheckResult.Release"/>.</summary>
+    UpdateAvailable,
+
+    /// <summary>Falha de rede, resposta inválida ou release fora do padrão esperado.</summary>
+    Failed
+}
+
+public sealed record UpdateCheckResult(UpdateCheckOutcome Outcome, AvailableRelease? Release = null);
+
 /// <summary>
-/// Consulta a última release publicada no GitHub. Versões seguem o padrão yyyy.MM.dd.NN.
-/// Qualquer falha de rede ou de formato resulta em "sem atualização": a verificação é opcional.
+/// Consulta a última release publicada no GitHub (<c>/releases/latest</c>).
+/// As versões seguem o padrão <c>yyyy.MM.dd.NN</c> e a tag é <c>v</c> + versão.
+/// Por segurança, só aceita páginas e downloads hospedados em <c>https://github.com</c>.
 /// </summary>
 public sealed class UpdateCheckService(HttpClient? httpClient = null, Uri? latestReleaseUrl = null)
 {
     private static readonly Uri DefaultLatestReleaseUrl =
         new("https://api.github.com/repos/lucasmota-dev/updater/releases/latest");
 
+    /// <summary>Nome do instalador publicado pelo workflow Release.</summary>
     public const string InstallerAssetName = "Atualizador-Setup.exe";
+
+    /// <summary>Arquivo com as somas SHA-256 dos binários da mesma release.</summary>
     public const string ChecksumsAssetName = "SHA256SUMS.txt";
 
     private readonly HttpClient _httpClient = httpClient ?? CreateDefaultClient();
     private readonly Uri _latestReleaseUrl = latestReleaseUrl ?? DefaultLatestReleaseUrl;
 
-    /// <summary>Versão do executável atual. Compilações locais usam 0.0.0.0.</summary>
+    /// <summary>Versão do executável atual, injetada pelo workflow Release. Compilações locais usam 0.0.0.0.</summary>
     public static Version CurrentVersion { get; } =
         Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0, 0);
 
+    /// <summary>Indica uma versão publicada (as compilações locais têm Major = 0).</summary>
     public static bool IsReleaseBuild(Version version) => version.Major > 0;
 
+    /// <summary>Formata no padrão do projeto, com dois dígitos: <c>2026.10.28.01</c>.</summary>
     public static string Format(Version version) =>
         $"{version.Major}.{version.Minor:00}.{version.Build:00}.{version.Revision:00}";
 
+    /// <summary>Converte a tag (<c>v2026.10.28.01</c>) em versão. Rejeita tags fora do padrão.</summary>
     public static bool TryParseTag(string? tag, out Version version)
     {
         version = new Version(0, 0, 0, 0);
         var text = tag?.TrimStart('v', 'V');
-        return text is not null
-            && text.Count(character => character == '.') == 3
-            && Version.TryParse(text, out var parsed)
-            && parsed is { Major: > 0, Minor: > 0, Build: > 0, Revision: >= 0 }
-            && (version = parsed) is not null;
+        if (text is null
+            || text.Count(character => character == '.') != 3
+            || !Version.TryParse(text, out var parsed)
+            || parsed is not { Major: > 0, Minor: > 0, Build: > 0, Revision: >= 0 })
+        {
+            return false;
+        }
+
+        version = parsed;
+        return true;
     }
 
-    public async Task<AvailableRelease?> CheckAsync(Version current, CancellationToken cancellationToken = default)
+    /// <summary>Atalho para quem só precisa saber se existe release mais nova (null = não existe ou falhou).</summary>
+    public async Task<AvailableRelease?> CheckAsync(Version current, CancellationToken cancellationToken = default) =>
+        (await CheckDetailedAsync(current, cancellationToken).ConfigureAwait(false)).Release;
+
+    /// <summary>
+    /// Consulta a última release e compara com <paramref name="current"/>.
+    /// Nunca lança exceção por falha de rede ou de formato: devolve <see cref="UpdateCheckOutcome.Failed"/>.
+    /// Só propaga <see cref="OperationCanceledException"/> quando o próprio chamador cancelou.
+    /// </summary>
+    public async Task<UpdateCheckResult> CheckDetailedAsync(Version current, CancellationToken cancellationToken = default)
     {
         if (!IsReleaseBuild(current))
         {
-            return null;
+            return new(UpdateCheckOutcome.NotApplicable);
         }
 
         try
@@ -55,7 +94,7 @@ public sealed class UpdateCheckService(HttpClient? httpClient = null, Uri? lates
             using var response = await _httpClient.GetAsync(_latestReleaseUrl, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                return null;
+                return new(UpdateCheckOutcome.Failed);
             }
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -64,39 +103,38 @@ public sealed class UpdateCheckService(HttpClient? httpClient = null, Uri? lates
                 || release.Draft
                 || release.Prerelease
                 || !TryParseTag(release.TagName, out var latest)
-                || latest <= current
-                || !IsGitHubPage(release.HtmlUrl, out var pageUrl))
+                || !TryGetGitHubUrl(release.HtmlUrl, out var pageUrl))
             {
-                return null;
+                return new(UpdateCheckOutcome.Failed);
             }
 
-            return new AvailableRelease(
+            if (latest <= current)
+            {
+                return new(UpdateCheckOutcome.UpToDate);
+            }
+
+            return new(UpdateCheckOutcome.UpdateAvailable, new AvailableRelease(
                 latest,
                 pageUrl,
                 FindAssetUrl(release.Assets, InstallerAssetName),
-                FindAssetUrl(release.Assets, ChecksumsAssetName));
+                FindAssetUrl(release.Assets, ChecksumsAssetName)));
         }
-        catch (HttpRequestException)
+        catch (Exception exception) when (exception is HttpRequestException or JsonException
+            // Timeout do HttpClient (não foi o chamador que cancelou).
+            || (exception is OperationCanceledException && !cancellationToken.IsCancellationRequested))
         {
-            return null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            return null;
+            return new(UpdateCheckOutcome.Failed);
         }
     }
 
     private static Uri? FindAssetUrl(IReadOnlyList<GitHubAsset>? assets, string name)
     {
         var asset = assets?.FirstOrDefault(item => string.Equals(item.Name, name, StringComparison.Ordinal));
-        return IsGitHubPage(asset?.DownloadUrl, out var url) ? url : null;
+        return TryGetGitHubUrl(asset?.DownloadUrl, out var url) ? url : null;
     }
 
-    private static bool IsGitHubPage(string? value, out Uri url)
+    /// <summary>Aceita apenas URLs absolutas em <c>https://github.com</c>.</summary>
+    private static bool TryGetGitHubUrl(string? value, out Uri url)
     {
         url = DefaultLatestReleaseUrl;
         if (!Uri.TryCreate(value, UriKind.Absolute, out var parsed)
@@ -113,11 +151,12 @@ public sealed class UpdateCheckService(HttpClient? httpClient = null, Uri? lates
     private static HttpClient CreateDefaultClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Atualizador-Windows");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("App-Updater");
         client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         return client;
     }
 
+    // Campos usados da resposta da API do GitHub. Os demais são ignorados.
     private sealed record GitHubRelease(
         [property: JsonPropertyName("tag_name")] string? TagName,
         [property: JsonPropertyName("html_url")] string? HtmlUrl,

@@ -6,7 +6,8 @@ name: Release
 #
 # Estrutura (privilégio mínimo):
 #   gate    -> confirma que o commit tem o CI verde (checks: read).
-#   build   -> compila, testa, publica, assina (se configurado) e gera o instalador (contents: read).
+#   build   -> compila, testa, publica, assina (se configurado) e gera o instalador (contents: read;
+#              actions: read para o SignPath baixar os artefatos enviados para assinatura).
 #   publish -> única etapa com contents: write; só baixa os artefatos prontos e cria a release.
 #
 # Actions de terceiros ficam fixadas por SHA de commit (a tag está no comentário). O Dependabot atualiza os SHAs.
@@ -58,11 +59,13 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: read
+      actions: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     env:
-      # Assinatura de código (Azure Trusted Signing). Só roda quando a variável abaixo existe.
-      SIGNING_ENABLED: ${{ vars.AZURE_SIGNING_ACCOUNT != '' }}
+      # Assinatura de código pelo SignPath Foundation. Só roda quando a variável abaixo existe.
+      # Cada assinatura precisa ser aprovada manualmente em app.signpath.io; o job espera até 1 hora.
+      SIGNING_ENABLED: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
 
     steps:
       - name: Baixar o código e as tags
@@ -75,7 +78,7 @@ jobs:
       - name: Avisar se a assinatura não estiver configurada
         if: env.SIGNING_ENABLED != 'true'
         shell: pwsh
-        run: Write-Host '::warning::Assinatura de código NÃO configurada (variável AZURE_SIGNING_ACCOUNT ausente). Os binários desta release NÃO serão assinados e o SmartScreen avisará sobre editor desconhecido.'
+        run: Write-Host '::warning::Assinatura de código NÃO configurada (variável SIGNPATH_ORGANIZATION_ID ausente). Os binários desta release NÃO serão assinados e o SmartScreen avisará sobre editor desconhecido.'
 
       - name: Calcular versão
         id: version
@@ -116,20 +119,33 @@ jobs:
         shell: pwsh
         run: ./tools/Test-AppStartup.ps1 -ExePath artifacts/publish/win-x64/Atualizador.Windows.exe
 
-      - name: Assinar executável
+      # O SignPath só assina arquivos enviados como artefato deste mesmo job (verificação de origem).
+      # O executável é assinado antes de entrar no instalador; o instalador é assinado depois.
+      - name: Enviar executável para assinatura
         if: env.SIGNING_ENABLED == 'true'
-        uses: Azure/trusted-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        id: unsigned-exe
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
-          signing-account-name: ${{ vars.AZURE_SIGNING_ACCOUNT }}
-          certificate-profile-name: ${{ vars.AZURE_SIGNING_PROFILE }}
-          files: ${{ github.workspace }}\artifacts\publish\win-x64\Atualizador.Windows.exe
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
+          name: unsigned-exe
+          path: artifacts/publish/win-x64/Atualizador.Windows.exe
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Assinar executável (SignPath)
+        if: env.SIGNING_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627 # v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: app-exe
+          github-artifact-id: ${{ steps.unsigned-exe.outputs.artifact-id }}
+          parameters: |
+            version: "${{ steps.version.outputs.version }}"
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: artifacts/publish/win-x64
 
       - name: Copiar executável
         shell: pwsh
@@ -164,20 +180,41 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "ISCC.exe falhou com código $LASTEXITCODE" }
           Copy-Item artifacts/Atualizador-Setup.exe artifacts/release/Atualizador-Setup.exe -Force
 
-      - name: Assinar instalador
+      - name: Enviar instalador para assinatura
         if: env.SIGNING_ENABLED == 'true'
-        uses: Azure/trusted-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        id: unsigned-installer
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
-          signing-account-name: ${{ vars.AZURE_SIGNING_ACCOUNT }}
-          certificate-profile-name: ${{ vars.AZURE_SIGNING_PROFILE }}
-          files: ${{ github.workspace }}\artifacts\release\Atualizador-Setup.exe
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
+          name: unsigned-installer
+          path: artifacts/release/Atualizador-Setup.exe
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Assinar instalador (SignPath)
+        if: env.SIGNING_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627 # v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: installer
+          github-artifact-id: ${{ steps.unsigned-installer.outputs.artifact-id }}
+          parameters: |
+            version: "${{ steps.version.outputs.version }}"
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: artifacts/release
+
+      - name: Conferir assinaturas
+        if: env.SIGNING_ENABLED == 'true'
+        shell: pwsh
+        run: |
+          foreach ($file in 'artifacts/release/Atualizador.exe', 'artifacts/release/Atualizador-Setup.exe') {
+            $signature = Get-AuthenticodeSignature -FilePath $file
+            if ($signature.Status -ne 'Valid') { throw "Assinatura inválida em ${file}: $($signature.Status)" }
+            Write-Host "$file assinado por: $($signature.SignerCertificate.Subject)"
+          }
 
       - name: Gerar somas SHA-256
         shell: pwsh
@@ -230,7 +267,7 @@ jobs:
             release/Atualizador-Setup.exe \
             release/SHA256SUMS.txt \
             --target "$RELEASE_SHA" \
-            --title "Atualizador Windows $VERSION" \
+            --title "App Updater $VERSION" \
             --generate-notes \
             --latest
           gh release view "$tag" --json tagName,isPrerelease,assets

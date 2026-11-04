@@ -1,5 +1,6 @@
 namespace Atualizador.Windows.Models;
 
+/// <summary>Pacote encontrado pela pesquisa do WinGet, que pode ser instalado.</summary>
 public sealed record InstallablePackage(
     string Name,
     string Id,
@@ -8,6 +9,7 @@ public sealed record InstallablePackage(
     string Publisher = "",
     string Match = "")
 {
+    /// <summary>A pesquisa do WinGet não mostra o publicador; usa a primeira parte do ID (Mozilla.Firefox → Mozilla).</summary>
     public static string InferPublisher(string id, string? explicitPublisher = null)
     {
         if (!string.IsNullOrWhiteSpace(explicitPublisher))
