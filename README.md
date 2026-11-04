@@ -117,15 +117,27 @@ dotnet publish src/Atualizador.Windows/Atualizador.Windows.csproj --configuratio
 
 O pacote ZIP gerado em `artifacts/Atualizador.Windows-0.1.0-win-x64.zip` contém o executável autocontido. A publicação não é assinada nesta versão.
 
-O instalador `Atualizador-Setup.exe` é compilado pelo workflow do GitHub Actions com `installer/Atualizador.iss` e instala em `C:\Atualizador` com atalhos e desinstalador.
+O instalador `Atualizador-Setup.exe` é compilado pelo workflow do GitHub Actions com `installer/Atualizador.iss` e instala por usuário, sem pedir permissão de administrador, em `%LOCALAPPDATA%\Programs\Atualizador`, com atalhos e desinstalador.
 
 ## Instalação e remoção
 
-1. Execute `Atualizador-Setup.exe` para instalar em `C:\Atualizador`, ou extraia o ZIP portátil em uma pasta escolhida pelo usuário.
+1. Execute `Atualizador-Setup.exe` para instalar em `%LOCALAPPDATA%\Programs\Atualizador`, ou extraia o ZIP portátil em uma pasta escolhida pelo usuário.
 2. O instalador cria atalhos na Área de Trabalho e no Menu Iniciar.
 3. Configure o agendamento, a inicialização e a bandeja somente se desejar.
 4. Para remover, desative/remova o agendamento e a inicialização na tela **Configurações**.
 5. Use o desinstalador do Inno Setup ou remova a pasta portátil. As preferências e o histórico ficam em `%LOCALAPPDATA%\\Atualizador.Windows` e não devem ser removidos automaticamente.
+
+### Atualização automática do aplicativo
+
+Ao abrir, a cópia instalada consulta a última release no GitHub. Se houver uma versão mais nova, o aplicativo:
+
+1. Baixa `Atualizador-Setup.exe` e `SHA256SUMS.txt` da release.
+2. Confere o SHA-256 do instalador. Se a soma não confere, descarta o arquivo.
+3. Executa o instalador em modo silencioso (`/VERYSILENT /AUTOUPDATE=1`), encerra o aplicativo e o instalador o abre de novo na versão nova.
+
+O aplicativo não atualiza a si mesmo durante uma atualização ou instalação de pacotes. Cópias portáteis e instalações antigas em `C:\Atualizador` (feitas como administrador) só mostram o aviso com o link da release. Nesse caso, instale a versão nova e remova a instalação antiga pelo desinstalador.
+
+Limitação: o SHA-256 vem da mesma release e protege contra download corrompido, não contra uma release adulterada. Enquanto a assinatura de código não estiver configurada, o executável não é assinado.
 
 ## Limitações confirmadas
 

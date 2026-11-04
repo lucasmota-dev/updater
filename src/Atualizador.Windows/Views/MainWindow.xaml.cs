@@ -13,6 +13,8 @@ public partial class MainWindow : Window, IDisposable
         InitializeComponent();
         var viewModel = new MainWindowViewModel();
         DataContext = viewModel;
+        // O instalador da nova versão substitui o executável; Shutdown ignora o "minimizar para a bandeja".
+        viewModel.ShutdownRequested += (_, _) => System.Windows.Application.Current.Shutdown();
         _trayIconService = new TrayIconService(
             this,
             viewModel.UpdatesPage,

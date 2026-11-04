@@ -55,6 +55,24 @@ public sealed class UpdateCheckServiceTests
     }
 
     [TestMethod]
+    public async Task CheckAsync_ReadsInstallerAndChecksumAssetsOnlyFromGitHub()
+    {
+        const string download = "https://github.com/lucasmota-dev/updater/releases/download/v2026.10.28.02/";
+        var body = $$"""
+            {"tag_name":"v2026.10.28.02","html_url":"https://github.com/lucasmota-dev/updater/releases/tag/v2026.10.28.02",
+             "prerelease":false,"draft":false,"assets":[
+               {"name":"Atualizador-Setup.exe","browser_download_url":"{{download}}Atualizador-Setup.exe"},
+               {"name":"SHA256SUMS.txt","browser_download_url":"https://evil.example/SHA256SUMS.txt"}]}
+            """;
+
+        var release = await CreateService(body).CheckAsync(Current);
+
+        Assert.IsNotNull(release);
+        Assert.AreEqual(new Uri(download + "Atualizador-Setup.exe"), release.InstallerUrl);
+        Assert.IsNull(release.ChecksumsUrl);
+    }
+
+    [TestMethod]
     public async Task CheckAsync_IgnoresSameOrOlderRelease()
     {
         var same = CreateService(Json("v2026.10.28.01", "https://github.com/lucasmota-dev/updater/releases/tag/v2026.10.28.01"));

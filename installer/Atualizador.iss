@@ -13,13 +13,14 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
-DefaultDirName=C:\Atualizador
+; Instalação por usuário (%LocalAppData%\Programs\Atualizador), sem UAC: permite a atualização automática silenciosa.
+DefaultDirName={autopf}\Atualizador
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-PrivilegesRequired=admin
-PrivilegesRequiredOverridesAllowed=dialog
+PrivilegesRequired=lowest
+CloseApplications=force
 OutputDir=..\artifacts
 OutputBaseFilename=Atualizador-Setup
 SetupIconFile={#IconFile}
@@ -41,3 +42,11 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Executar {#AppName}"; Flags: nowait postinstall skipifsilent
+; Atualização automática (/AUTOUPDATE=1, vinda do próprio aplicativo): reabre o aplicativo ao terminar.
+Filename: "{app}\{#AppExeName}"; Flags: nowait; Check: IsAutoUpdate
+
+[Code]
+function IsAutoUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:AUTOUPDATE|0}') = '1';
+end;

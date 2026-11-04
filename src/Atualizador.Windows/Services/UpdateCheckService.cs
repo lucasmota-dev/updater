@@ -5,7 +5,8 @@ using System.Text.Json.Serialization;
 
 namespace Atualizador.Windows.Services;
 
-public sealed record AvailableRelease(Version Version, Uri PageUrl);
+/// <summary>Release mais nova. Os links do instalador e das somas só existem quando a release publica os dois arquivos.</summary>
+public sealed record AvailableRelease(Version Version, Uri PageUrl, Uri? InstallerUrl = null, Uri? ChecksumsUrl = null);
 
 /// <summary>
 /// Consulta a última release publicada no GitHub. Versões seguem o padrão yyyy.MM.dd.NN.
@@ -15,6 +16,9 @@ public sealed class UpdateCheckService(HttpClient? httpClient = null, Uri? lates
 {
     private static readonly Uri DefaultLatestReleaseUrl =
         new("https://api.github.com/repos/lucasmota-dev/updater/releases/latest");
+
+    public const string InstallerAssetName = "Atualizador-Setup.exe";
+    public const string ChecksumsAssetName = "SHA256SUMS.txt";
 
     private readonly HttpClient _httpClient = httpClient ?? CreateDefaultClient();
     private readonly Uri _latestReleaseUrl = latestReleaseUrl ?? DefaultLatestReleaseUrl;
@@ -66,7 +70,11 @@ public sealed class UpdateCheckService(HttpClient? httpClient = null, Uri? lates
                 return null;
             }
 
-            return new AvailableRelease(latest, pageUrl);
+            return new AvailableRelease(
+                latest,
+                pageUrl,
+                FindAssetUrl(release.Assets, InstallerAssetName),
+                FindAssetUrl(release.Assets, ChecksumsAssetName));
         }
         catch (HttpRequestException)
         {
@@ -80,6 +88,12 @@ public sealed class UpdateCheckService(HttpClient? httpClient = null, Uri? lates
         {
             return null;
         }
+    }
+
+    private static Uri? FindAssetUrl(IReadOnlyList<GitHubAsset>? assets, string name)
+    {
+        var asset = assets?.FirstOrDefault(item => string.Equals(item.Name, name, StringComparison.Ordinal));
+        return IsGitHubPage(asset?.DownloadUrl, out var url) ? url : null;
     }
 
     private static bool IsGitHubPage(string? value, out Uri url)
@@ -108,5 +122,10 @@ public sealed class UpdateCheckService(HttpClient? httpClient = null, Uri? lates
         [property: JsonPropertyName("tag_name")] string? TagName,
         [property: JsonPropertyName("html_url")] string? HtmlUrl,
         [property: JsonPropertyName("draft")] bool Draft,
-        [property: JsonPropertyName("prerelease")] bool Prerelease);
+        [property: JsonPropertyName("prerelease")] bool Prerelease,
+        [property: JsonPropertyName("assets")] IReadOnlyList<GitHubAsset>? Assets);
+
+    private sealed record GitHubAsset(
+        [property: JsonPropertyName("name")] string? Name,
+        [property: JsonPropertyName("browser_download_url")] string? DownloadUrl);
 }

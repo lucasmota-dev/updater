@@ -231,6 +231,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public DelegateCommand OpenNotificationLinkCommand { get; }
 
+    /// <summary>Pedido para encerrar o aplicativo porque o instalador da nova versão já foi iniciado.</summary>
+    public event EventHandler? ShutdownRequested;
+
     public void Dispose()
     {
         _updateCheckCancellation.Cancel();
@@ -242,7 +245,17 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private async Task CheckForAppUpdateAsync(CancellationToken cancellationToken)
     {
         var release = await new UpdateCheckService().CheckAsync(UpdateCheckService.CurrentVersion, cancellationToken);
-        if (release is null || cancellationToken.IsCancellationRequested || _notificationService.HasNotification)
+        if (release is null || cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (await TryInstallAppUpdateAsync(release, cancellationToken))
+        {
+            return;
+        }
+
+        if (cancellationToken.IsCancellationRequested || _notificationService.HasNotification)
         {
             return;
         }
@@ -255,6 +268,32 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             "Abrir página da versão",
             release.PageUrl));
     }
+
+    /// <summary>
+    /// Atualização automática: só na cópia instalada por usuário e sem atualização ou instalação de pacotes em andamento.
+    /// Retorna true quando o instalador foi iniciado e o aplicativo pediu o encerramento.
+    /// </summary>
+    private async Task<bool> TryInstallAppUpdateAsync(AvailableRelease release, CancellationToken cancellationToken)
+    {
+        if (!AppSelfUpdateService.IsRunningInstalledCopy() || IsPackageWorkRunning)
+        {
+            return false;
+        }
+
+        var installerPath = await new AppSelfUpdateService().DownloadInstallerAsync(release, cancellationToken);
+        if (installerPath is null
+            || cancellationToken.IsCancellationRequested
+            || IsPackageWorkRunning
+            || !AppSelfUpdateService.TryStartInstaller(installerPath))
+        {
+            return false;
+        }
+
+        ShutdownRequested?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    private bool IsPackageWorkRunning => _updatesPage.IsUpdating || _installPage.IsInstalling;
 
     private void OpenNotificationLink()
     {
