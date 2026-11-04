@@ -12,6 +12,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private readonly NotificationService _notifications = new();
     private readonly NavigationPreferencesStore _navigationPreferences = new();
+    private readonly PackageOperationGate _operationGate = new();
     private PageViewModel _selectedPage;
     private bool _isNavigationCollapsed;
 
@@ -21,8 +22,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         var wingetService = new WingetService();
         var excludedPackagesStore = new ExcludedPackagesStore();
 
-        UpdatesPage = new UpdatesPageViewModel(wingetService, historyStore, excludedPackagesStore, notificationService: _notifications);
-        InstallPage = new InstallPageViewModel(wingetService, historyStore, notificationService: _notifications);
+        // Trava compartilhada: a fila de instalação e as atualizações nunca rodam o instalador ao mesmo tempo.
+        var operationGate = _operationGate;
+        UpdatesPage = new UpdatesPageViewModel(wingetService, historyStore, excludedPackagesStore, notificationService: _notifications, operationGate: operationGate);
+        InstallPage = new InstallPageViewModel(wingetService, historyStore, notificationService: _notifications, operationGate: operationGate);
         TraySettings = new TraySettingsViewModel(new TrayPreferencesStore());
         WindowsUpdatePage = new WindowsUpdatePageViewModel(historyStore, notifications: _notifications);
         HistoryPage = new HistoryPageViewModel(historyStore);
@@ -58,6 +61,15 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         // Tarefas em segundo plano, sem bloquear a abertura da janela:
         // atualiza a tarefa "Iniciar com o Windows" criada por versões anteriores, procura nova versão
         // do app e já busca as atualizações de aplicativos (a página Atualizações é a primeira).
+        if (ElevationGuard.IsElevated)
+        {
+            // Só acontece se não foi possível reabrir sem elevação (ex.: UAC desligado).
+            _notifications.Publish(new Models.AppNotification(
+                Models.NotificationKind.Erro,
+                "O App Updater está rodando como administrador",
+                "Instaladores por usuário (como Discord e Spotify) podem se recusar a instalar. " + ElevationGuard.ElevationAdvice));
+        }
+
         _ = startup.RefreshTaskAsync();
         _ = AppUpdate.CheckOnStartupAsync();
         OnPageOpened(_selectedPage);
@@ -118,6 +130,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         UpdatesPage.Dispose();
         InstallPage.Dispose();
         WindowsUpdatePage.Dispose();
+        _operationGate.Dispose();
     }
 
     /// <summary>

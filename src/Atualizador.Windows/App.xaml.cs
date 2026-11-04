@@ -23,13 +23,22 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        var isMinimized = e.Args.Length == 1 && IsArgument(e.Args[0], StartupTaskService.MinimizedArgument);
+
+        // Aberto como administrador: reabre como usuário comum, senão instaladores por usuário falham.
+        if ((e.Args.Length == 0 || isMinimized) && ElevationGuard.TryRelaunchUnelevated())
+        {
+            Shutdown(0);
+            return;
+        }
+
         if (e.Args.Length == 0)
         {
             new Views.MainWindow().Show();
             return;
         }
 
-        if (e.Args.Length == 1 && IsArgument(e.Args[0], StartupTaskService.MinimizedArgument))
+        if (isMinimized)
         {
             // A janela é criada (com o ícone da bandeja), mas não exibida. O usuário a abre pela bandeja.
             _ = new Views.MainWindow();

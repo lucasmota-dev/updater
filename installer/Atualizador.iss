@@ -72,8 +72,9 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 Filename: "{app}\{#AppExeName}"; Description: "Executar o {#AppName}"; Flags: nowait postinstall skipifsilent
 ; Atualização automática (/AUTOUPDATE=1, enviado pelo próprio aplicativo): reabre o app ao terminar.
 ; Com /MINIMIZED=1 (o app estava escondido na bandeja), reabre só na bandeja, sem mostrar a janela.
-Filename: "{app}\{#AppExeName}"; Flags: nowait; Check: IsAutoUpdate and not IsMinimized
-Filename: "{app}\{#AppExeName}"; Parameters: "--minimized"; Flags: nowait; Check: IsAutoUpdate and IsMinimized
+; runasoriginaluser: se o instalador estiver elevado, o app reabre como o usuário comum (sem administrador).
+Filename: "{app}\{#AppExeName}"; Flags: nowait runasoriginaluser; Check: IsAutoUpdate and not IsMinimized
+Filename: "{app}\{#AppExeName}"; Parameters: "--minimized"; Flags: nowait runasoriginaluser; Check: IsAutoUpdate and IsMinimized
 
 [Code]
 function IsAutoUpdate: Boolean;

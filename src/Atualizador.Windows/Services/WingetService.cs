@@ -26,18 +26,23 @@ public sealed partial class WingetService : IPackageUpdateService
     private const int AccessDeniedExitCode = 5;
     private const int InstallerRequiresElevationExitCode = unchecked((int)0x8A15002B);
     private const int InstallerRequiresInteractionExitCode = unchecked((int)0x8A150011);
+    private const int UserCanceledUacError = 1223;
 
     private readonly IProcessExecutor _processExecutor;
     private readonly IExecutableLocator _locator;
+    private readonly bool _isElevated;
 
     /// <param name="processExecutor">Executor de processos; os testes usam um falso para não tocar no sistema.</param>
     /// <param name="locator">Localiza o <c>winget.exe</c>; os testes usam um falso.</param>
+    /// <param name="isElevated">Se o app está rodando como administrador (muda o diagnóstico de falhas). Os testes informam.</param>
     public WingetService(
         IProcessExecutor? processExecutor = null,
-        IExecutableLocator? locator = null)
+        IExecutableLocator? locator = null,
+        bool? isElevated = null)
     {
         _processExecutor = processExecutor ?? new SystemProcessExecutor();
         _locator = locator ?? new WingetLocator();
+        _isElevated = isElevated ?? ElevationGuard.IsElevated;
     }
 
     /// <summary>
@@ -157,9 +162,13 @@ public sealed partial class WingetService : IPackageUpdateService
             return new(package, PackageUpdateStatus.Failed, processResult.ErrorMessage ?? "Não foi possível iniciar o WinGet.", null);
         }
 
-        return processResult.ExitCode == 0
-            ? new(package, PackageUpdateStatus.Succeeded, "Atualização concluída.", processResult.ExitCode)
-            : new(package, PackageUpdateStatus.Failed, SummarizeError(processResult.StandardError), processResult.ExitCode);
+        if (processResult.ExitCode == 0)
+        {
+            return new(package, PackageUpdateStatus.Succeeded, "Atualização concluída.", processResult.ExitCode);
+        }
+
+        var (status, message) = ClassifyFailure(processResult, "atualização");
+        return new(package, status, message, processResult.ExitCode);
     }
 
     /// <summary>
@@ -302,22 +311,113 @@ public sealed partial class WingetService : IPackageUpdateService
             return new(package, PackageUpdateStatus.Succeeded, "Instalação concluída com sucesso.", processResult.ExitCode);
         }
 
-        var combinedOutput = $"{processResult.StandardError} {processResult.StandardOutput}".Trim();
-        if (processResult.ExitCode is AccessDeniedExitCode or InstallerRequiresElevationExitCode
-            || combinedOutput.Contains("admin", StringComparison.OrdinalIgnoreCase)
-            || combinedOutput.Contains("elevat", StringComparison.OrdinalIgnoreCase))
+        var (status, message) = ClassifyFailure(processResult, "instalação");
+        return new(package, status, message, processResult.ExitCode);
+    }
+
+    /// <summary>
+    /// Instala com permissão de administrador, para os poucos instaladores que exigem isso.
+    /// Abre o <c>winget.exe</c> com <c>runas</c> (o Windows mostra o aviso do UAC) só para este pacote.
+    /// </summary>
+    public async Task<PackageInstallResult> InstallElevatedAsync(InstallablePackage package, CancellationToken cancellationToken = default)
+    {
+        var (status, message, exitCode) = await RunElevatedAsync("install", package.Id, package.Source, cancellationToken);
+        return new PackageInstallResult(package, status, message, exitCode);
+    }
+
+    /// <summary>Atualiza com permissão de administrador (veja <see cref="InstallElevatedAsync"/>).</summary>
+    public async Task<PackageUpdateResult> UpgradeElevatedAsync(UpdatablePackage package, CancellationToken cancellationToken = default)
+    {
+        var (status, message, exitCode) = await RunElevatedAsync("upgrade", package.Id, package.Source, cancellationToken);
+        return new PackageUpdateResult(package, status, message, exitCode);
+    }
+
+    /// <summary>
+    /// Executa <c>winget install/upgrade</c> elevado. Com <c>runas</c> não dá para ler a saída, só o código
+    /// de saída. Os argumentos vêm de ID e origem já validados (letras, dígitos, ponto, hífen e
+    /// sublinhado), então montá-los em uma linha não permite injetar outros comandos.
+    /// </summary>
+    private async Task<(PackageUpdateStatus Status, string Message, int? ExitCode)> RunElevatedAsync(
+        string command, string id, string source, CancellationToken cancellationToken)
+    {
+        if (!IsSafeIdentifier(id) || !IsSafeIdentifier(source))
         {
-            return new(package, PackageUpdateStatus.RequiresElevation, "A instalação exige privilégios de administrador (elevação administrativa).", processResult.ExitCode);
+            return (PackageUpdateStatus.Failed, "O ID ou a origem do pacote não foi validado.", null);
         }
 
-        if (processResult.ExitCode is InstallerRequiresInteractionExitCode
+        var wingetPath = _locator.Locate();
+        if (wingetPath is null)
+        {
+            return (PackageUpdateStatus.Failed, "O WinGet não foi localizado.", null);
+        }
+
+        var startInfo = new System.Diagnostics.ProcessStartInfo(wingetPath)
+        {
+            UseShellExecute = true, // obrigatório para "runas"
+            Verb = "runas",
+            WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+            Arguments = string.Join(' ', BuildPackageArguments(command, id, source))
+        };
+
+        try
+        {
+            using var process = System.Diagnostics.Process.Start(startInfo);
+            if (process is null)
+            {
+                return (PackageUpdateStatus.Failed, "Não foi possível iniciar o WinGet como administrador.", null);
+            }
+
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(InstallTimeout);
+            await process.WaitForExitAsync(timeout.Token);
+            return process.ExitCode == 0
+                ? (PackageUpdateStatus.Succeeded, "Concluído como administrador.", process.ExitCode)
+                : (PackageUpdateStatus.Failed, $"O WinGet terminou com o código 0x{process.ExitCode:X8}, mesmo como administrador.", process.ExitCode);
+        }
+        catch (System.ComponentModel.Win32Exception exception) when (exception.NativeErrorCode == UserCanceledUacError)
+        {
+            return (PackageUpdateStatus.Canceled, "A permissão de administrador não foi concedida.", null);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return (PackageUpdateStatus.Failed, "A operação como administrador excedeu o tempo limite.", null);
+        }
+    }
+
+    /// <summary>
+    /// Traduz uma falha do WinGet em estado e mensagem úteis.
+    /// <list type="bullet">
+    /// <item>Códigos de acesso negado/exige elevação → <see cref="PackageUpdateStatus.RequiresElevation"/>
+    /// (a tela oferece "Tentar como administrador").</item>
+    /// <item>Texto citando "admin"/"elevat": se o app <b>já</b> está elevado, o problema é o contrário — o
+    /// instalador não aceita rodar como administrador (caso de Discord e Spotify).</item>
+    /// </list>
+    /// </summary>
+    private (PackageUpdateStatus Status, string Message) ClassifyFailure(ProcessExecutionResult result, string operation)
+    {
+        var combinedOutput = $"{result.StandardError} {result.StandardOutput}".Trim();
+        var mentionsAdmin = combinedOutput.Contains("admin", StringComparison.OrdinalIgnoreCase)
+            || combinedOutput.Contains("elevat", StringComparison.OrdinalIgnoreCase);
+
+        if (result.ExitCode is AccessDeniedExitCode or InstallerRequiresElevationExitCode || (mentionsAdmin && !_isElevated))
+        {
+            return (PackageUpdateStatus.RequiresElevation, $"A {operation} exige privilégios de administrador.");
+        }
+
+        if (mentionsAdmin)
+        {
+            return (PackageUpdateStatus.Failed,
+                "Este instalador não aceita rodar como administrador. " + ElevationGuard.ElevationAdvice);
+        }
+
+        if (result.ExitCode is InstallerRequiresInteractionExitCode
             || combinedOutput.Contains("interactive", StringComparison.OrdinalIgnoreCase))
         {
-            return new(package, PackageUpdateStatus.RequiresInteraction, "O instalador exige interação do usuário e não pôde ser executado em modo silencioso.", processResult.ExitCode);
+            return (PackageUpdateStatus.RequiresInteraction, "O instalador exige interação do usuário e não pôde ser executado em modo silencioso.");
         }
 
-        var error = string.IsNullOrWhiteSpace(processResult.StandardError) ? processResult.StandardOutput : processResult.StandardError;
-        return new(package, PackageUpdateStatus.Failed, SummarizeError(error), processResult.ExitCode);
+        var error = string.IsNullOrWhiteSpace(result.StandardError) ? result.StandardOutput : result.StandardError;
+        return (PackageUpdateStatus.Failed, SummarizeError(error));
     }
 
     /// <summary>

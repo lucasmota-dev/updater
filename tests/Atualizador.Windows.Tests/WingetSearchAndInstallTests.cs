@@ -135,6 +135,34 @@ public sealed class WingetSearchAndInstallTests
     }
 
     [TestMethod]
+    public async Task InstallAsync_WhenAppIsElevated_ExplainsThatInstallerRefusesAdmin()
+    {
+        // Ex.: Spotify/Discord recusam instalar a partir de um processo de administrador.
+        var output = new ProcessExecutionResult(true, 1, string.Empty, "The installer cannot be run from an administrator context.", false, false, null);
+        var elevated = new WingetService(new FakeProcessExecutor([output]), new FakeLocator("winget.exe"), isElevated: true);
+        var normal = new WingetService(new FakeProcessExecutor([output]), new FakeLocator("winget.exe"), isElevated: false);
+        var package = new InstallablePackage("Spotify", "Spotify.Spotify", "1.0", "winget", "Spotify");
+
+        var elevatedResult = await elevated.InstallAsync(package);
+        var normalResult = await normal.InstallAsync(package);
+
+        Assert.AreEqual(PackageUpdateStatus.Failed, elevatedResult.Status);
+        StringAssert.Contains(elevatedResult.Message, "não aceita rodar como administrador");
+        Assert.AreEqual(PackageUpdateStatus.RequiresElevation, normalResult.Status);
+    }
+
+    [TestMethod]
+    public async Task UpgradeAsync_IdentifiesRequiresElevationByExitCode()
+    {
+        var executor = new FakeProcessExecutor([new(true, 5, string.Empty, "Access is denied.", false, false, null)]);
+        var service = new WingetService(executor, new FakeLocator("winget.exe"), isElevated: false);
+
+        var result = await service.UpgradeAsync(new UpdatablePackage("Admin App", "Vendor.AdminApp", "1.0", "2.0", "winget", false));
+
+        Assert.AreEqual(PackageUpdateStatus.RequiresElevation, result.Status);
+    }
+
+    [TestMethod]
     public async Task InstallAsync_IdentifiesRequiresInteraction()
     {
         var executor = new FakeProcessExecutor(

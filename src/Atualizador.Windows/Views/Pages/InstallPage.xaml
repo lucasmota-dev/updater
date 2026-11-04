@@ -1,7 +1,16 @@
 <!--
     Página Instalar (DataContext: InstallPageViewModel).
-    Pesquisa aproximada no catálogo do WinGet (veja PackageSearch), lista com "marcar/desmarcar
-    todos" no cabeçalho e rodapé destacado com filtro e "Instalar selecionados".
+    ┌ título ───────────────────────────────────────────────┐
+    │ [pesquisa ........................] [Pesquisar]       │
+    │ caixa de estado                                        │
+    │ ┌ resultados ──────────────────────────────────────┐  │
+    │ │ [✓] Aplicativo  ID  Versão  Origem  Situação     │  │
+    │ │ rodapé: filtro            [Adicionar à fila (N)] │  │
+    │ └──────────────────────────────────────────────────┘  │
+    │ ┌ fila de instalação (só aparece com itens) ───────┐  │
+    │ │ 1 de 3 concluídos • instalando X  [Cancelar atual]│  │
+    │ └──────────────────────────────────────────────────┘  │
+    A pesquisa continua disponível enquanto a fila instala, um aplicativo por vez.
 -->
 <UserControl x:Class="Atualizador.Windows.Views.Pages.InstallPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -11,7 +20,8 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="*" MinHeight="140" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0">
@@ -37,9 +47,7 @@
         <Border Grid.Row="2" Margin="0,16,0,16" Style="{DynamicResource StatusPanelStyle}">
             <StackPanel>
                 <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource StatusTextStyle}" />
-                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentPackageName}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
                 <ProgressBar Margin="0,8,0,0" Height="5" Minimum="0" Maximum="100"
-                             Value="{Binding InstallProgress, Mode=OneWay}"
                              IsIndeterminate="{Binding IsSearching, Mode=OneWay}"
                              Style="{DynamicResource ProgressBarStyle}" />
                 <TextBlock Margin="0,8,0,0"
@@ -48,32 +56,26 @@
             </StackPanel>
         </Border>
 
+        <!-- Resultados da pesquisa -->
         <Border Grid.Row="3" Style="{DynamicResource ListCardStyle}">
             <DockPanel>
-                <!-- Rodapé destacado: filtro, contador e ações -->
                 <Border DockPanel.Dock="Bottom" Style="{DynamicResource ActionFooterStyle}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <WrapPanel Grid.Column="0" Style="{DynamicResource ActionBarStyle}" Margin="0" VerticalAlignment="Center">
-                            <TextBox Width="180" Margin="{StaticResource ActionItemMargin}"
-                                     Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
-                                     Tag="Filtrar resultados"
-                                     ToolTip="Filtrar os resultados por nome, ID ou publicador"
-                                     AutomationProperties.Name="Filtrar resultados da pesquisa"
-                                     Style="{DynamicResource SettingsTextBoxStyle}" />
-                            <TextBlock Margin="4,0,12,8" VerticalAlignment="Center"
-                                       Text="{Binding SelectedCount, StringFormat={}{0} selecionado(s)}"
-                                       Style="{DynamicResource CaptionTextStyle}" />
-                            <Button Margin="{StaticResource ActionItemMargin}" Content="Cancelar"
-                                    Command="{Binding CancelInstallCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
-                        </WrapPanel>
+                        <TextBox Grid.Column="0" Width="200" Margin="0,0,8,8" HorizontalAlignment="Left"
+                                 Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                                 Tag="Filtrar resultados"
+                                 ToolTip="Filtrar os resultados por nome, ID ou publicador"
+                                 AutomationProperties.Name="Filtrar resultados da pesquisa"
+                                 Style="{DynamicResource SettingsTextBoxStyle}" />
                         <Button Grid.Column="1" Margin="0,0,0,8" VerticalAlignment="Top"
-                                Content="{Binding SelectedCount}" ContentStringFormat="Instalar selecionados ({0})"
-                                Command="{Binding InstallSelectedCommand}"
-                                AutomationProperties.Name="Instalar selecionados"
+                                Content="{Binding SelectedCount}" ContentStringFormat="Adicionar à fila ({0})"
+                                Command="{Binding AddSelectedToQueueCommand}"
+                                ToolTip="Adicionar os aplicativos marcados à fila. Eles são instalados um de cada vez."
+                                AutomationProperties.Name="Adicionar selecionados à fila de instalação"
                                 Style="{DynamicResource PrimaryButtonStyle}" />
                     </Grid>
                 </Border>
@@ -97,7 +99,6 @@
                 </Grid>
 
                 <Grid>
-                    <!-- Sem resultados: orienta o usuário em vez de mostrar uma lista vazia. -->
                     <TextBlock Margin="16,8" HorizontalAlignment="Center" VerticalAlignment="Center"
                                Text="Nenhum resultado para mostrar. Pesquise um aplicativo pelo nome ou ID."
                                TextWrapping="Wrap" TextAlignment="Center">
@@ -157,6 +158,75 @@
                         </ListView.ItemTemplate>
                     </ListView>
                 </Grid>
+            </DockPanel>
+        </Border>
+
+        <!-- Fila de instalação -->
+        <Border Grid.Row="4" Margin="0,12,0,0" Style="{DynamicResource ListCardStyle}"
+                Visibility="{Binding HasQueue, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Padding="16,10" Background="{DynamicResource SubtleAccentBrush}" CornerRadius="10,10,0,0">
+                    <StackPanel>
+                        <DockPanel>
+                            <WrapPanel DockPanel.Dock="Right" Style="{DynamicResource ActionBarStyle}" Margin="12,0,0,-8">
+                                <Button Margin="{StaticResource ActionItemMargin}" Content="Cancelar atual"
+                                        Command="{Binding CancelCurrentCommand}"
+                                        ToolTip="Cancelar só a instalação em andamento; a fila continua com o próximo. O instalador externo pode não reverter alterações."
+                                        Style="{DynamicResource SecondaryButtonStyle}" />
+                                <Button Margin="0,0,0,8" Content="Limpar concluídos"
+                                        Command="{Binding ClearFinishedCommand}"
+                                        Style="{DynamicResource SecondaryButtonStyle}" />
+                            </WrapPanel>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Fila de instalação" Style="{DynamicResource StatusTextStyle}" />
+                                <TextBlock Margin="0,2,0,0" Text="{Binding QueueSummary}" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                            </StackPanel>
+                        </DockPanel>
+                        <ProgressBar Margin="0,8,0,0" Height="4" Minimum="0" Maximum="100"
+                                     Value="{Binding QueueProgress, Mode=OneWay}"
+                                     Style="{DynamicResource ProgressBarStyle}" />
+                    </StackPanel>
+                </Border>
+
+                <ListView ItemsSource="{Binding Queue}" MaxHeight="190" Margin="8,4,8,6"
+                          Style="{DynamicResource UpdateListStyle}"
+                          ItemContainerStyle="{DynamicResource UpdateListItemStyle}"
+                          AutomationProperties.Name="Fila de instalação">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Margin="8,0,0,0" Content="&#xE711;"
+                                        ToolTip="Remover da fila"
+                                        AutomationProperties.Name="Remover da fila"
+                                        Command="{Binding DataContext.RemoveFromQueueCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                        CommandParameter="{Binding}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource NavigationToggleButtonStyle}">
+                                            <Setter Property="Margin" Value="8,0,0,0" />
+                                            <Setter Property="Padding" Value="4,2" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPending}" Value="False">
+                                                    <Setter Property="Visibility" Value="Hidden" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                                <TextBlock DockPanel.Dock="Right" Width="240" Margin="8,0,0,0" VerticalAlignment="Center"
+                                           Text="{Binding StatusMessage}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                           Style="{DynamicResource CaptionTextStyle}" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}">
+                                        <Run Text="{Binding Id, Mode=OneWay}" /> • <Run Text="{Binding Version, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <ProgressBar Margin="0,6,0,0" Height="3" IsIndeterminate="True" Style="{DynamicResource ProgressBarStyle}"
+                                                 Visibility="{Binding IsRunning, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
             </DockPanel>
         </Border>
     </Grid>

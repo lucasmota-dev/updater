@@ -23,6 +23,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     private readonly ListCollectionView _filteredPackages;
     private readonly IUserConfirmation _confirmation;
     private readonly NotificationService? _notificationService;
+    private readonly PackageOperationGate _operationGate;
     private bool _isLoading;
     private bool _isError;
     private bool _isUpdating;
@@ -37,7 +38,8 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         HistoryStore? historyStore = null,
         ExcludedPackagesStore? excludedPackagesStore = null,
         IUserConfirmation? confirmation = null,
-        NotificationService? notificationService = null)
+        NotificationService? notificationService = null,
+        PackageOperationGate? operationGate = null)
         : base("Atualizações", "Veja quais aplicativos instalados têm uma versão mais nova disponível.", "")
     {
         _wingetService = wingetService;
@@ -45,6 +47,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         _excludedPackagesStore = excludedPackagesStore ?? new ExcludedPackagesStore();
         _confirmation = confirmation ?? new MessageBoxUserConfirmation();
         _notificationService = notificationService;
+        _operationGate = operationGate ?? new PackageOperationGate();
         Packages = [];
         _filteredPackages = new ListCollectionView(Packages);
         _filteredPackages.SortDescriptions.Add(new SortDescription(nameof(UpdateItemViewModel.Name), ListSortDirection.Ascending));
@@ -292,7 +295,29 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
                     package.Status = PackageUpdateStatus.InProgress;
                     package.StatusMessage = "Instalação em andamento…";
                     StatusMessage = $"Atualizando {package.Name} ({completed + 1} de {packages.Length})…";
-                    var result = await _wingetService.UpgradeAsync(package.Package, _updateCancellation.Token);
+                    PackageUpdateResult result;
+                    if (_operationGate.IsBusy)
+                    {
+                        package.StatusMessage = "Aguardando a instalação em andamento terminar…";
+                    }
+
+                    // Uma instalação ou atualização por vez no app inteiro (veja PackageOperationGate).
+                    using (await _operationGate.EnterAsync(_updateCancellation.Token))
+                    {
+                        package.StatusMessage = "Instalação em andamento…";
+                        result = await _wingetService.UpgradeAsync(package.Package, _updateCancellation.Token);
+
+                        // Instalador que exige administrador: oferece repetir só este pacote com o aviso do UAC.
+                        if (result.Status == PackageUpdateStatus.RequiresElevation && _confirmation.Confirm(
+                                "Permissão de administrador",
+                                $"A atualização de {package.Name} exige permissão de administrador.\n\n"
+                                + "Tentar de novo como administrador? O Windows vai mostrar o aviso de permissão (UAC) só para este aplicativo."))
+                        {
+                            package.StatusMessage = "Aguardando a permissão de administrador…";
+                            result = await _wingetService.UpgradeElevatedAsync(package.Package, _updateCancellation.Token);
+                        }
+                    }
+
                     package.Status = result.Status;
                     package.StatusMessage = result.Message;
                 }

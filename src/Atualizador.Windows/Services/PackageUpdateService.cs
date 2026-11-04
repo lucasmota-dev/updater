@@ -28,4 +28,12 @@ public interface IPackageUpdateService
     Task<PackageInstallResult> InstallAsync(
         InstallablePackage package,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Instala como administrador (aviso do UAC). Só para instaladores que exigem elevação.</summary>
+    Task<PackageInstallResult> InstallElevatedAsync(InstallablePackage package, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new PackageInstallResult(package, PackageUpdateStatus.Failed, "Instalação como administrador não disponível."));
+
+    /// <summary>Atualiza como administrador (aviso do UAC). Só para instaladores que exigem elevação.</summary>
+    Task<PackageUpdateResult> UpgradeElevatedAsync(UpdatablePackage package, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new PackageUpdateResult(package, PackageUpdateStatus.Failed, "Atualização como administrador não disponível.", null));
 }
