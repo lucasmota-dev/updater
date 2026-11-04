@@ -15,6 +15,10 @@ $ErrorActionPreference = 'Stop'
 
 $resolved = (Resolve-Path -LiteralPath $ExePath).Path
 $startedAt = Get-Date
+
+# O executor do GitHub Actions roda como administrador. Sem esta variável, o app se reabriria sem
+# elevação (veja ElevationGuard) e este teste veria o processo original encerrar.
+$env:APP_UPDATER_ALLOW_ELEVATED = '1'
 $process = Start-Process -FilePath $resolved -PassThru
 
 try {

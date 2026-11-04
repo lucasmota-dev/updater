@@ -41,7 +41,11 @@ public static class ElevationGuard
     public static bool TryRelaunchUnelevated()
     {
         var executable = Environment.ProcessPath;
-        if (!IsElevated || string.IsNullOrEmpty(executable) || !IsUacEnabled() || Process.GetProcessesByName("explorer").Length == 0)
+        if (!IsElevated
+            || IsElevationAllowedByEnvironment()
+            || string.IsNullOrEmpty(executable)
+            || !IsUacEnabled()
+            || Process.GetProcessesByName("explorer").Length == 0)
         {
             return false;
         }
@@ -60,6 +64,17 @@ public static class ElevationGuard
             return false;
         }
     }
+
+    /// <summary>Nome da variável que permite rodar elevado sem se reabrir.</summary>
+    public const string AllowElevatedVariable = "APP_UPDATER_ALLOW_ELEVATED";
+
+    /// <summary>
+    /// <c>APP_UPDATER_ALLOW_ELEVATED=1</c> desliga a reabertura. Usado pelo teste de abertura do CI,
+    /// cujo executor do GitHub Actions roda como administrador com UAC: sem isso, o app se reabriria
+    /// pelo Explorador e o teste veria o processo original encerrar.
+    /// </summary>
+    private static bool IsElevationAllowedByEnvironment() =>
+        Environment.GetEnvironmentVariable(AllowElevatedVariable) == "1";
 
     private static bool CheckIsElevated()
     {
