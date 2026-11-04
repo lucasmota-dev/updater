@@ -71,10 +71,17 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Executar o {#AppName}"; Flags: nowait postinstall skipifsilent
 ; Atualização automática (/AUTOUPDATE=1, enviado pelo próprio aplicativo): reabre o app ao terminar.
-Filename: "{app}\{#AppExeName}"; Flags: nowait; Check: IsAutoUpdate
+; Com /MINIMIZED=1 (o app estava escondido na bandeja), reabre só na bandeja, sem mostrar a janela.
+Filename: "{app}\{#AppExeName}"; Flags: nowait; Check: IsAutoUpdate and not IsMinimized
+Filename: "{app}\{#AppExeName}"; Parameters: "--minimized"; Flags: nowait; Check: IsAutoUpdate and IsMinimized
 
 [Code]
 function IsAutoUpdate: Boolean;
 begin
   Result := ExpandConstant('{param:AUTOUPDATE|0}') = '1';
+end;
+
+function IsMinimized: Boolean;
+begin
+  Result := ExpandConstant('{param:MINIMIZED|0}') = '1';
 end;

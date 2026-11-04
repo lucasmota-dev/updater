@@ -190,7 +190,11 @@ public sealed class AppUpdateViewModel : ViewModelBase, IDisposable
         var installerPath = await new AppSelfUpdateService().DownloadInstallerAsync(release, cancellationToken);
 
         // Revalida: uma atualização de pacotes pode ter começado durante o download.
-        if (installerPath is null || _isPackageWorkRunning() || !AppSelfUpdateService.TryStartInstaller(installerPath))
+        // Janela escondida (iniciado com o Windows ou minimizado na bandeja): reabre escondido também.
+        var reopenMinimized = System.Windows.Application.Current?.MainWindow is { IsVisible: false };
+        if (installerPath is null
+            || _isPackageWorkRunning()
+            || !AppSelfUpdateService.TryStartInstaller(installerPath, reopenMinimized))
         {
             StatusMessage = $"Não foi possível baixar ou validar o instalador da versão {newVersion}.";
             PublishReleaseNotification(release, isManual);

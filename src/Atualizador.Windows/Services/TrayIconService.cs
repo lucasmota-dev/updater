@@ -83,6 +83,10 @@ public sealed class TrayIconService : IDisposable
     {
         _isExiting = true;
         _window.Close();
+
+        // Com --minimized a janela pode nunca ter sido exibida; nesse caso o Close não encerra o app sozinho.
+        Dispose();
+        System.Windows.Application.Current.Shutdown();
     }
 
     private void ShowWindow()

@@ -12,6 +12,12 @@ public sealed class StartupTaskService
     /// <summary>Nome da tarefa. Não mudar: tarefas já criadas por versões anteriores usam este nome.</summary>
     public const string TaskName = "\\Atualizador.Windows.Startup.v1";
 
+    /// <summary>
+    /// Argumento da tarefa: abre o app só na área de notificação, sem mostrar a janela,
+    /// para não atrapalhar o usuário logo após o logon.
+    /// </summary>
+    public const string MinimizedArgument = "--minimized";
+
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
     private readonly IProcessExecutor _processExecutor;
     private readonly string _applicationPath;
@@ -39,7 +45,7 @@ public sealed class StartupTaskService
         return RunSchtasksAsync(
         [
             "/Create", "/TN", TaskName,
-            "/TR", $"\"{Path.GetFullPath(_applicationPath)}\"",
+            "/TR", $"\"{Path.GetFullPath(_applicationPath)}\" {MinimizedArgument}",
             "/SC", "ONLOGON", "/IT", "/RL", "LIMITED", "/F"
         ], cancellationToken);
     }

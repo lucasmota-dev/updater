@@ -75,6 +75,8 @@ public sealed class ScheduleTests
         Assert.IsTrue(executor.Request.Arguments.Contains("/Create"));
         Assert.IsTrue(executor.Request.Arguments.Contains(StartupTaskService.TaskName));
         Assert.IsTrue(executor.Request.Arguments.Contains("ONLOGON"));
+        // Ao iniciar com o Windows, o app abre só na bandeja.
+        Assert.IsTrue(executor.Request.Arguments.Contains(@"""C:\Apps\Atualizador.Windows.exe"" --minimized"));
     }
 
     private sealed class FakeProcessExecutor : IProcessExecutor

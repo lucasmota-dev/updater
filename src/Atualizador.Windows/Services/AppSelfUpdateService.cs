@@ -170,16 +170,24 @@ public sealed class AppSelfUpdateService(HttpClient? httpClient = null, string? 
 
     /// <summary>
     /// Inicia o instalador por usuário em modo silencioso. /AUTOUPDATE=1 faz o instalador
-    /// abrir o aplicativo de novo ao terminar. O chamador deve encerrar o aplicativo em seguida.
+    /// abrir o aplicativo de novo ao terminar; com <paramref name="reopenMinimized"/>, ele reabre
+    /// só na área de notificação (o app estava escondido e não deve aparecer de repente).
+    /// O chamador deve encerrar o aplicativo em seguida.
     /// </summary>
-    public static bool TryStartInstaller(string installerPath)
+    public static bool TryStartInstaller(string installerPath, bool reopenMinimized = false)
     {
         var startInfo = new ProcessStartInfo(installerPath)
         {
             UseShellExecute = false,
             WorkingDirectory = Path.GetDirectoryName(installerPath) ?? string.Empty
         };
-        foreach (var argument in new[] { "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/AUTOUPDATE=1" })
+        var arguments = new List<string> { "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/AUTOUPDATE=1" };
+        if (reopenMinimized)
+        {
+            arguments.Add("/MINIMIZED=1");
+        }
+
+        foreach (var argument in arguments)
         {
             startInfo.ArgumentList.Add(argument);
         }

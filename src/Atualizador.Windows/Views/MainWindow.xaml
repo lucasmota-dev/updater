@@ -510,7 +510,7 @@
                                       Style="{DynamicResource CheckBoxStyle}"
                                       Content="Iniciar o aplicativo com o Windows" />
                             <TextBlock Margin="0,8,0,0"
-                                       Text="Desligado por padrão. A opção usa uma tarefa visível e removível do Agendador de Tarefas."
+                                       Text="O aplicativo abre minimizado na área de notificação, sem mostrar a janela. Desligado por padrão; usa uma tarefa visível e removível do Agendador de Tarefas."
                                        TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
                             <Button Margin="0,14,0,0" HorizontalAlignment="Left" Content="Aplicar inicialização"
                                     Command="{Binding Startup.ApplyCommand}" Style="{DynamicResource SecondaryButtonStyle}" />

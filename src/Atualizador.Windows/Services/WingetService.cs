@@ -162,7 +162,18 @@ public sealed partial class WingetService : IPackageUpdateService
             : new(package, PackageUpdateStatus.Failed, SummarizeError(processResult.StandardError), processResult.ExitCode);
     }
 
-    /// <summary>Pesquisa pacotes no catálogo. Exige ao menos 2 caracteres para evitar listas enormes.</summary>
+    /// <summary>
+    /// Pesquisa aproximada no catálogo. Exige ao menos 2 caracteres para evitar listas enormes.
+    /// <para>
+    /// 1. Pesquisa o texto inteiro. Se o WinGet encontrar algo, todos os resultados são mantidos
+    /// (ele também compara tags e apelidos que não aparecem na tabela) e só a ordem muda.
+    /// </para>
+    /// <para>
+    /// 2. Se não encontrar nada, tenta termos mais curtos (<see cref="PackageSearch.BuildFallbackTerms"/>)
+    /// e mantém só os pacotes em que todas as palavras digitadas combinam, mesmo que aproximadamente.
+    /// Assim "firefox br" encontra "Mozilla Firefox (pt-BR)" e "firfox" encontra "Firefox".
+    /// </para>
+    /// </summary>
     public async Task<WingetSearchResult> SearchAsync(
         string query,
         string source = "winget",
@@ -182,8 +193,50 @@ public sealed partial class WingetService : IPackageUpdateService
                 "O WinGet não foi localizado. Instale ou repare o App Installer e tente novamente.");
         }
 
+        var trimmedQuery = query.Trim();
+        var exact = await SearchTermAsync(wingetPath, trimmedQuery, source, cancellationToken);
+        if (exact.Failure is not null)
+        {
+            return exact.Failure;
+        }
+
+        if (exact.Packages.Count > 0)
+        {
+            var ranked = PackageSearch.Rank(trimmedQuery, exact.Packages, requireAllWords: false);
+            return new(WingetSearchStatus.Success, ranked, $"{ranked.Count} aplicativo(s) encontrado(s).", exact.ExitCode);
+        }
+
+        foreach (var term in PackageSearch.BuildFallbackTerms(trimmedQuery))
+        {
+            var attempt = await SearchTermAsync(wingetPath, term, source, cancellationToken);
+            if (attempt.Failure is not null)
+            {
+                return attempt.Failure;
+            }
+
+            var similar = PackageSearch.Rank(trimmedQuery, attempt.Packages, requireAllWords: true);
+            if (similar.Count > 0)
+            {
+                return new(
+                    WingetSearchStatus.Success,
+                    similar,
+                    $"Nenhum resultado exato para '{trimmedQuery}'. {similar.Count} aplicativo(s) parecido(s) encontrado(s).",
+                    attempt.ExitCode);
+            }
+        }
+
+        return new(WingetSearchStatus.NoPackagesFound, [], "Nenhum aplicativo foi encontrado para o termo informado.", exact.ExitCode);
+    }
+
+    /// <summary>Executa um único <c>winget search</c>. <c>Failure</c> só é preenchido se o WinGet não rodou até o fim.</summary>
+    private async Task<(IReadOnlyList<InstallablePackage> Packages, int ExitCode, WingetSearchResult? Failure)> SearchTermAsync(
+        string wingetPath,
+        string term,
+        string source,
+        CancellationToken cancellationToken)
+    {
         // O termo vai como um único argumento: o WinGet o recebe literalmente, sem interpretação de shell.
-        var arguments = new List<string> { "search", query.Trim(), "--disable-interactivity" };
+        var arguments = new List<string> { "search", term, "--disable-interactivity" };
         if (!string.IsNullOrWhiteSpace(source) && !source.Equals("Todas", StringComparison.OrdinalIgnoreCase))
         {
             arguments.Add("--source");
@@ -193,17 +246,15 @@ public sealed partial class WingetService : IPackageUpdateService
         var result = await ExecuteAsync(wingetPath, arguments, QueryTimeout, cancellationToken);
         if (!result.Started || result.Canceled || result.TimedOut)
         {
-            return new(
+            return ([], result.ExitCode, new(
                 WingetSearchStatus.ExecutionFailed,
                 [],
                 result.ErrorMessage ?? "A consulta ao catálogo do WinGet falhou.",
-                result.ExitCode);
+                result.ExitCode));
         }
 
-        var packages = WingetOutputParser.ParseSearchResults(result.StandardOutput, source);
-        return packages.Count == 0
-            ? new(WingetSearchStatus.NoPackagesFound, [], "Nenhum aplicativo foi encontrado para o termo informado.", result.ExitCode)
-            : new(WingetSearchStatus.Success, packages, $"{packages.Count} aplicativo(s) encontrado(s).", result.ExitCode);
+        // "Nenhum pacote encontrado" também termina aqui: a tabela vem vazia.
+        return (WingetOutputParser.ParseSearchResults(result.StandardOutput, source), result.ExitCode, null);
     }
 
     /// <summary>

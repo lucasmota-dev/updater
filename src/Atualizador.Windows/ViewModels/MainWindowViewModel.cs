@@ -47,7 +47,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         DismissNotificationCommand = new DelegateCommand(_notifications.Clear);
         OpenNotificationLinkCommand = new DelegateCommand(OpenNotificationLink);
 
-        // Verificação automática de nova versão do app, sem bloquear a abertura da janela.
+        // Tarefas em segundo plano, sem bloquear a abertura da janela:
+        // atualiza a tarefa "Iniciar com o Windows" criada por versões anteriores e procura nova versão do app.
+        _ = startup.RefreshTaskAsync();
         _ = AppUpdate.CheckOnStartupAsync();
     }
 

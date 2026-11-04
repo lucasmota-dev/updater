@@ -37,6 +37,28 @@ public sealed class StartupSettingsViewModel : ViewModelBase
 
     public AsyncDelegateCommand ApplyCommand { get; }
 
+    /// <summary>
+    /// Recria a tarefa de inicialização, se estiver ligada, para ela apontar para o executável atual
+    /// e usar a ação mais recente (versões anteriores abriam a janela; hoje ela abre só na bandeja).
+    /// Falhas são ignoradas: a tarefa antiga continua funcionando.
+    /// </summary>
+    public async Task RefreshTaskAsync()
+    {
+        if (!IsEnabled)
+        {
+            return;
+        }
+
+        try
+        {
+            await _startupTaskService.SetEnabledAsync(true);
+        }
+        catch (InvalidOperationException)
+        {
+            // Caminho do executável inválido; o usuário verá o erro se aplicar a opção manualmente.
+        }
+    }
+
     private async Task ApplyAsync()
     {
         ScheduledTaskResult result;

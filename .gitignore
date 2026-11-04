@@ -6,6 +6,7 @@
 *.suo
 *.userosscache
 *.sln.docstates
+*_wpftmp.csproj
 
 # Logs e resultados locais
 *.log

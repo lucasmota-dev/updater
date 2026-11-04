@@ -4,9 +4,11 @@ using Atualizador.Windows.Services;
 namespace Atualizador.Windows;
 
 /// <summary>
-/// Ponto de entrada do aplicativo. Há dois modos de execução:
+/// Ponto de entrada do aplicativo. Há três modos de execução:
 /// <list type="bullet">
 /// <item>sem argumentos: abre a janela principal;</item>
+/// <item><c>--minimized</c>: usado pela inicialização com o Windows; fica só na área de notificação,
+/// sem mostrar a janela nem tirar o foco do que o usuário está fazendo;</item>
 /// <item><c>--scheduled</c>: chamado pela tarefa agendada; atualiza sem janela e encerra com um código de saída.</item>
 /// </list>
 /// Qualquer outro argumento é recusado (código 2), para que ninguém use o app para executar comandos arbitrários.
@@ -25,7 +27,14 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (e.Args.Length == 1 && e.Args[0].Equals(ScheduledArgument, StringComparison.OrdinalIgnoreCase))
+        if (e.Args.Length == 1 && IsArgument(e.Args[0], StartupTaskService.MinimizedArgument))
+        {
+            // A janela é criada (com o ícone da bandeja), mas não exibida. O usuário a abre pela bandeja.
+            _ = new Views.MainWindow();
+            return;
+        }
+
+        if (e.Args.Length == 1 && IsArgument(e.Args[0], ScheduledArgument))
         {
             var exitCode = await new ScheduledRunService().RunAsync();
             Shutdown(exitCode);
@@ -34,4 +43,7 @@ public partial class App : System.Windows.Application
 
         Shutdown(2);
     }
+
+    private static bool IsArgument(string value, string expected) =>
+        value.Equals(expected, StringComparison.OrdinalIgnoreCase);
 }
