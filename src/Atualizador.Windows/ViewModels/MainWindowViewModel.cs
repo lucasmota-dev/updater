@@ -24,7 +24,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         UpdatesPage = new UpdatesPageViewModel(wingetService, historyStore, excludedPackagesStore, notificationService: _notifications);
         InstallPage = new InstallPageViewModel(wingetService, historyStore, notificationService: _notifications);
         TraySettings = new TraySettingsViewModel(new TrayPreferencesStore());
-        AppUpdate = new AppUpdateViewModel(_notifications, () => UpdatesPage.IsUpdating || InstallPage.IsInstalling);
+        WindowsUpdatePage = new WindowsUpdatePageViewModel(historyStore, notifications: _notifications);
+        HistoryPage = new HistoryPageViewModel(historyStore);
+
+        // O app não se atualiza enquanto alguma instalação estiver em andamento.
+        AppUpdate = new AppUpdateViewModel(
+            _notifications,
+            () => UpdatesPage.IsUpdating || InstallPage.IsInstalling || WindowsUpdatePage.IsInstalling);
 
         var schedule = new ScheduleSettingsViewModel(
             new ScheduleStore(),
@@ -37,8 +43,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         [
             UpdatesPage,
             InstallPage,
-            new HistoryPageViewModel(historyStore),
-            new SettingsPageViewModel(new AppearanceService(), schedule, startup, TraySettings, excludedSettings, AppUpdate)
+            WindowsUpdatePage,
+            HistoryPage,
+            new SettingsPageViewModel(new AppearanceService(), schedule, startup, TraySettings, excludedSettings),
+            new AboutPageViewModel(AppUpdate)
         ];
         _selectedPage = Pages[0];
         _isNavigationCollapsed = _navigationPreferences.LoadIsCollapsed();
@@ -48,9 +56,11 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         OpenNotificationLinkCommand = new DelegateCommand(OpenNotificationLink);
 
         // Tarefas em segundo plano, sem bloquear a abertura da janela:
-        // atualiza a tarefa "Iniciar com o Windows" criada por versões anteriores e procura nova versão do app.
+        // atualiza a tarefa "Iniciar com o Windows" criada por versões anteriores, procura nova versão
+        // do app e já busca as atualizações de aplicativos (a página Atualizações é a primeira).
         _ = startup.RefreshTaskAsync();
         _ = AppUpdate.CheckOnStartupAsync();
+        OnPageOpened(_selectedPage);
     }
 
     /// <summary>Páginas do menu lateral, na ordem de exibição.</summary>
@@ -59,7 +69,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public PageViewModel SelectedPage
     {
         get => _selectedPage;
-        set => SetProperty(ref _selectedPage, value);
+        set
+        {
+            if (SetProperty(ref _selectedPage, value))
+            {
+                OnPageOpened(value);
+            }
+        }
     }
 
     /// <summary>Menu lateral recolhido (só ícones). A escolha é lembrada entre sessões.</summary>
@@ -81,6 +97,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public InstallPageViewModel InstallPage { get; }
 
+    public WindowsUpdatePageViewModel WindowsUpdatePage { get; }
+
+    public HistoryPageViewModel HistoryPage { get; }
+
     public TraySettingsViewModel TraySettings { get; }
 
     /// <summary>Versão atual e atualização do próprio app (barra de status e Configurações).</summary>
@@ -97,6 +117,27 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         AppUpdate.Dispose();
         UpdatesPage.Dispose();
         InstallPage.Dispose();
+        WindowsUpdatePage.Dispose();
+    }
+
+    /// <summary>
+    /// Ações automáticas ao abrir uma página: Atualizações busca de novo se a lista estiver antiga,
+    /// Windows Update procura na primeira visita e Histórico recarrega os registros novos.
+    /// </summary>
+    private static void OnPageOpened(PageViewModel page)
+    {
+        switch (page)
+        {
+            case UpdatesPageViewModel updates:
+                _ = updates.RefreshIfStaleAsync();
+                break;
+            case WindowsUpdatePageViewModel windowsUpdate:
+                _ = windowsUpdate.SearchOnFirstOpenAsync();
+                break;
+            case HistoryPageViewModel history:
+                history.RefreshCommand.Execute(null);
+                break;
+        }
     }
 
     private void OpenNotificationLink()

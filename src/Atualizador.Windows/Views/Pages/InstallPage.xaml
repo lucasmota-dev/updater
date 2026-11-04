@@ -1,0 +1,163 @@
+<!--
+    Página Instalar (DataContext: InstallPageViewModel).
+    Pesquisa aproximada no catálogo do WinGet (veja PackageSearch), lista com "marcar/desmarcar
+    todos" no cabeçalho e rodapé destacado com filtro e "Instalar selecionados".
+-->
+<UserControl x:Class="Atualizador.Windows.Views.Pages.InstallPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="{Binding Title}" Style="{DynamicResource SectionTitleTextStyle}" />
+            <TextBlock Margin="0,6,0,0" Text="{Binding Description}" TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}" />
+        </StackPanel>
+
+        <!-- Pesquisa: Enter no campo também pesquisa. -->
+        <DockPanel Grid.Row="1" Margin="0,20,0,0">
+            <Button DockPanel.Dock="Right" Margin="12,0,0,0" Content="Pesquisar" Command="{Binding SearchCommand}"
+                    AutomationProperties.Name="Pesquisar aplicativos"
+                    Style="{DynamicResource PrimaryButtonStyle}" />
+            <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                     Tag="Nome ou ID do aplicativo (ex.: firefox br, vscode, Mozilla.Firefox)"
+                     AutomationProperties.Name="Termo de pesquisa do aplicativo"
+                     Style="{DynamicResource SettingsTextBoxStyle}">
+                <TextBox.InputBindings>
+                    <KeyBinding Key="Return" Command="{Binding SearchCommand}" />
+                </TextBox.InputBindings>
+            </TextBox>
+        </DockPanel>
+
+        <Border Grid.Row="2" Margin="0,16,0,16" Style="{DynamicResource StatusPanelStyle}">
+            <StackPanel>
+                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource StatusTextStyle}" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentPackageName}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                <ProgressBar Margin="0,8,0,0" Height="5" Minimum="0" Maximum="100"
+                             Value="{Binding InstallProgress, Mode=OneWay}"
+                             IsIndeterminate="{Binding IsSearching, Mode=OneWay}"
+                             Style="{DynamicResource ProgressBarStyle}" />
+                <TextBlock Margin="0,8,0,0"
+                           Text="Revise o publicador antes de instalar: estar no catálogo do WinGet não garante que o aplicativo seja seguro."
+                           TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3" Style="{DynamicResource ListCardStyle}">
+            <DockPanel>
+                <!-- Rodapé destacado: filtro, contador e ações -->
+                <Border DockPanel.Dock="Bottom" Style="{DynamicResource ActionFooterStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <WrapPanel Grid.Column="0" Style="{DynamicResource ActionBarStyle}" Margin="0" VerticalAlignment="Center">
+                            <TextBox Width="180" Margin="{StaticResource ActionItemMargin}"
+                                     Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                                     Tag="Filtrar resultados"
+                                     ToolTip="Filtrar os resultados por nome, ID ou publicador"
+                                     AutomationProperties.Name="Filtrar resultados da pesquisa"
+                                     Style="{DynamicResource SettingsTextBoxStyle}" />
+                            <TextBlock Margin="4,0,12,8" VerticalAlignment="Center"
+                                       Text="{Binding SelectedCount, StringFormat={}{0} selecionado(s)}"
+                                       Style="{DynamicResource CaptionTextStyle}" />
+                            <Button Margin="{StaticResource ActionItemMargin}" Content="Cancelar"
+                                    Command="{Binding CancelInstallCommand}" Style="{DynamicResource SecondaryButtonStyle}" />
+                        </WrapPanel>
+                        <Button Grid.Column="1" Margin="0,0,0,8" VerticalAlignment="Top"
+                                Content="{Binding SelectedCount}" ContentStringFormat="Instalar selecionados ({0})"
+                                Command="{Binding InstallSelectedCommand}"
+                                AutomationProperties.Name="Instalar selecionados"
+                                Style="{DynamicResource PrimaryButtonStyle}" />
+                    </Grid>
+                </Border>
+
+                <!-- Cabeçalho: as colunas precisam ser iguais às do ItemTemplate. -->
+                <Grid DockPanel.Dock="Top" Margin="16,10,16,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="34" />
+                        <ColumnDefinition Width="2.2*" />
+                        <ColumnDefinition Width="1.5*" />
+                        <ColumnDefinition Width="1.1*" />
+                        <ColumnDefinition Width="0.9*" />
+                        <ColumnDefinition Width="1.5*" />
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" IsChecked="{Binding AreAllSelected, Mode=TwoWay}" Style="{DynamicResource SelectAllCheckBoxStyle}" />
+                    <TextBlock Grid.Column="1" Margin="8,0,8,0" Text="Aplicativo e publicador" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                    <TextBlock Grid.Column="2" Margin="0,0,8,0" Text="Identificador (ID)" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                    <TextBlock Grid.Column="3" Margin="0,0,8,0" Text="Versão" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                    <TextBlock Grid.Column="4" Margin="0,0,8,0" Text="Origem" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                    <TextBlock Grid.Column="5" Margin="0,0,8,0" Text="Situação" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                </Grid>
+
+                <Grid>
+                    <!-- Sem resultados: orienta o usuário em vez de mostrar uma lista vazia. -->
+                    <TextBlock Margin="16,8" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Text="Nenhum resultado para mostrar. Pesquise um aplicativo pelo nome ou ID."
+                               TextWrapping="Wrap" TextAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasPackages}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ListView ItemsSource="{Binding FilteredPackages}"
+                              Margin="8,0,8,4"
+                              Style="{DynamicResource UpdateListStyle}"
+                              ItemContainerStyle="{DynamicResource UpdateListItemStyle}"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              ScrollViewer.CanContentScroll="True"
+                              AutomationProperties.Name="Lista de resultados para instalação">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="2.2*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                        <ColumnDefinition Width="1.1*" />
+                                        <ColumnDefinition Width="0.9*" />
+                                        <ColumnDefinition Width="1.5*" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}">
+                                        <CheckBox.Style>
+                                            <Style TargetType="CheckBox" BasedOn="{StaticResource CheckBoxStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DataContext.IsBusy, RelativeSource={RelativeSource AncestorType=ListView}}" Value="True">
+                                                        <Setter Property="IsEnabled" Value="False" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </CheckBox.Style>
+                                    </CheckBox>
+                                    <StackPanel Grid.Column="1" Margin="8,0,8,0">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Publisher}" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{Binding Id}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                    <TextBlock Grid.Column="3" Text="{Binding Version}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="4" Text="{Binding Source}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="5" Text="{Binding StatusMessage}" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

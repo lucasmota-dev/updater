@@ -9,11 +9,14 @@ namespace Atualizador.Windows.ViewModels;
 
 /// <summary>
 /// Página Atualizações: consulta o WinGet, mostra os pacotes com versão nova (menos os excluídos
-/// pelo usuário) e atualiza os pacotes marcados, um de cada vez, com progresso e cancelamento.
+/// pelo usuário) e atualiza os pacotes marcados, ou todos, um de cada vez, com progresso e cancelamento.
 /// Toda consulta e toda atualização viram um registro no histórico.
 /// </summary>
 public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
 {
+    /// <summary>Ao voltar para a página, a lista é consultada de novo se tiver mais que isso.</summary>
+    public static readonly TimeSpan AutoRefreshAge = TimeSpan.FromMinutes(10);
+
     private readonly IPackageUpdateService _wingetService;
     private readonly HistoryStore _historyStore;
     private readonly ExcludedPackagesStore _excludedPackagesStore;
@@ -24,9 +27,9 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     private bool _isError;
     private bool _isUpdating;
     private double _updateProgress;
-    private int _completedUpdates;
     private string _currentPackageName = string.Empty;
     private string _statusMessage = "Clique em Buscar atualizações para consultar o WinGet.";
+    private DateTimeOffset? _lastRefreshAt;
     private CancellationTokenSource? _updateCancellation;
 
     public UpdatesPageViewModel(
@@ -35,7 +38,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         ExcludedPackagesStore? excludedPackagesStore = null,
         IUserConfirmation? confirmation = null,
         NotificationService? notificationService = null)
-        : base("Atualizações", "Veja quais aplicativos instalados têm uma versão mais nova disponível.", "\uE895")
+        : base("Atualizações", "Veja quais aplicativos instalados têm uma versão mais nova disponível.", "")
     {
         _wingetService = wingetService;
         _historyStore = historyStore ?? new HistoryStore();
@@ -45,25 +48,24 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         Packages = [];
         _filteredPackages = new ListCollectionView(Packages);
         _filteredPackages.SortDescriptions.Add(new SortDescription(nameof(UpdateItemViewModel.Name), ListSortDirection.Ascending));
-        RefreshCommand = new AsyncDelegateCommand(RefreshAsync, () => !IsLoading && !IsUpdating);
-        SelectAllCommand = new DelegateCommand(SelectAll, () => HasPackages && !IsLoading && !IsUpdating);
-        ClearSelectionCommand = new DelegateCommand(ClearSelection, () => HasSelectedPackages && !IsLoading && !IsUpdating);
-        UpdateSelectedCommand = new AsyncDelegateCommand(UpdateSelectedAsync, CanUpdateSelected);
+        RefreshCommand = new AsyncDelegateCommand(RefreshAsync, () => !IsBusy);
+        UpdateSelectedCommand = new AsyncDelegateCommand(UpdateSelectedAsync, () => HasSelectedPackages && !IsBusy);
+        UpdateAllCommand = new AsyncDelegateCommand(UpdateAllAsync, () => HasPackages && !IsBusy);
         CancelUpdateCommand = new DelegateCommand(CancelUpdate, () => IsUpdating);
-        ExcludeSelectedCommand = new DelegateCommand(ExcludeSelected, CanExcludeSelected);
+        ExcludeSelectedCommand = new DelegateCommand(ExcludeSelected, () => HasSelectedPackages && !IsBusy);
     }
 
     public ObservableCollection<UpdateItemViewModel> Packages { get; }
 
     public ICollectionView FilteredPackages => _filteredPackages;
 
+    /// <summary>Botão "Buscar atualizações" (e item "Verificar atualizações" da bandeja).</summary>
     public AsyncDelegateCommand RefreshCommand { get; }
 
-    public DelegateCommand SelectAllCommand { get; }
-
-    public DelegateCommand ClearSelectionCommand { get; }
-
     public AsyncDelegateCommand UpdateSelectedCommand { get; }
+
+    /// <summary>Atualiza todos os pacotes da lista, um por um. Nunca usa <c>winget upgrade --all</c>, que ignoraria as exclusões.</summary>
+    public AsyncDelegateCommand UpdateAllCommand { get; }
 
     public DelegateCommand CancelUpdateCommand { get; }
 
@@ -74,12 +76,11 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         get => _isLoading;
         private set
         {
-            if (!SetProperty(ref _isLoading, value))
+            if (SetProperty(ref _isLoading, value))
             {
-                return;
+                OnPropertyChanged(nameof(IsBusy));
+                RaiseCommandStates();
             }
-
-            RaiseCommandStates();
         }
     }
 
@@ -88,14 +89,16 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         get => _isUpdating;
         private set
         {
-            if (!SetProperty(ref _isUpdating, value))
+            if (SetProperty(ref _isUpdating, value))
             {
-                return;
+                OnPropertyChanged(nameof(IsBusy));
+                RaiseCommandStates();
             }
-
-            RaiseCommandStates();
         }
     }
+
+    /// <summary>Consulta ou atualização em andamento: bloqueia a seleção e os botões de ação.</summary>
+    public bool IsBusy => IsLoading || IsUpdating;
 
     public bool IsError
     {
@@ -107,12 +110,6 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     {
         get => _updateProgress;
         private set => SetProperty(ref _updateProgress, value);
-    }
-
-    public int CompletedUpdates
-    {
-        get => _completedUpdates;
-        private set => SetProperty(ref _completedUpdates, value);
     }
 
     public string CurrentPackageName
@@ -131,25 +128,61 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
 
     public bool HasSelectedPackages => Packages.Any(package => package.IsSelected);
 
-    public string EmptyStateMessage => Packages.Count == 0
-        ? "Nenhuma atualização carregada. Clique em Buscar atualizações para consultar o WinGet."
-        : "Nenhuma atualização corresponde ao filtro selecionado.";
+    public string EmptyStateMessage => IsLoading
+        ? "Consultando o WinGet…"
+        : Packages.Count == 0
+            ? "Nenhuma atualização encontrada. Clique em Buscar atualizações para consultar de novo."
+            : "Nenhuma atualização corresponde ao filtro selecionado.";
 
     public int SelectedCount => Packages.Count(package => package.IsSelected);
+
+    /// <summary>
+    /// Caixa "marcar/desmarcar todos" do cabeçalho da lista: marcada se todos estão marcados,
+    /// desmarcada se nenhum, e indeterminada (null) se só alguns.
+    /// </summary>
+    public bool? AreAllSelected
+    {
+        get
+        {
+            var selected = SelectedCount;
+            return selected == 0 ? false : selected == Packages.Count ? true : null;
+        }
+        set
+        {
+            var select = value == true;
+            foreach (var package in _filteredPackages.Cast<UpdateItemViewModel>())
+            {
+                package.IsSelected = select;
+            }
+
+            UpdateSelectionState();
+        }
+    }
 
     public IReadOnlyList<UpdatablePackage> SelectedPackages =>
         Packages.Where(package => package.IsSelected).Select(package => package.Package).ToArray();
 
     /// <summary>
-    /// Botão "Buscar atualizações" (e item "Verificar atualizações" da bandeja): consulta o WinGet,
-    /// remove os pacotes excluídos, substitui a lista e registra o resultado no histórico.
+    /// Busca automática ao abrir a página: consulta se ainda não consultou nesta sessão ou se a
+    /// última consulta tem mais de <see cref="AutoRefreshAge"/>. Não faz nada durante outra operação.
+    /// </summary>
+    public Task RefreshIfStaleAsync()
+    {
+        var isStale = _lastRefreshAt is null || DateTimeOffset.Now - _lastRefreshAt > AutoRefreshAge;
+        return isStale && !IsBusy ? RefreshAsync() : Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Consulta o WinGet, remove os pacotes excluídos, substitui a lista e registra o resultado no histórico.
     /// </summary>
     private async Task RefreshAsync()
     {
         var startedAt = DateTimeOffset.Now;
+        _lastRefreshAt = startedAt;
         IsLoading = true;
         IsError = false;
         StatusMessage = "Consultando o WinGet…";
+        OnPropertyChanged(nameof(EmptyStateMessage));
         try
         {
             var result = await _wingetService.DiscoverUpdatesAsync();
@@ -174,8 +207,9 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
             StatusMessage = displayResult.Message;
             if (displayResult.Status == WingetDiscoveryStatus.Success)
             {
-                _notificationService?.Publish(new(NotificationKind.Informacao, "Atualizações encontradas", result.Message));
+                _notificationService?.Publish(new(NotificationKind.Informacao, "Atualizações encontradas", displayResult.Message));
             }
+
             if (displayResult.Warnings.Count > 0)
             {
                 StatusMessage += " Alguns registros não puderam ser exibidos.";
@@ -191,38 +225,47 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
             StatusMessage = $"Não foi possível consultar o WinGet: {exception.Message}";
             _notificationService?.Publish(new(NotificationKind.Erro, "Falha na consulta", StatusMessage));
             _historyStore.Append(new HistoryEntry(
-                Guid.NewGuid(),
-                startedAt,
-                DateTimeOffset.Now,
-                HistoryOperation.Descoberta,
-                "WinGet",
-                0,
-                HistoryEntryStatus.Falha,
-                StatusMessage,
-                []));
+                Guid.NewGuid(), startedAt, DateTimeOffset.Now, HistoryOperation.Descoberta, "WinGet",
+                0, HistoryEntryStatus.Falha, StatusMessage, []));
         }
         finally
         {
             IsLoading = false;
-            UpdateCommandStates();
+            OnPropertyChanged(nameof(EmptyStateMessage));
+            UpdateSelectionState();
         }
     }
 
-    /// <summary>
-    /// Pede confirmação e atualiza os pacotes marcados em sequência. Revalida a lista de exclusões
-    /// antes de cada pacote, porque ela pode ter mudado depois da consulta.
-    /// </summary>
-    private async Task UpdateSelectedAsync()
+    private Task UpdateSelectedAsync()
     {
-        var selectedPackages = Packages.Where(package => package.IsSelected).ToArray();
-        if (selectedPackages.Length == 0)
+        var selected = Packages.Where(package => package.IsSelected).ToArray();
+        return UpdatePackagesAsync(selected, $"Deseja atualizar {selected.Length} aplicativo(s) selecionado(s)?");
+    }
+
+    private Task UpdateAllAsync()
+    {
+        var all = _filteredPackages.Cast<UpdateItemViewModel>().ToArray();
+        foreach (var package in all)
+        {
+            package.IsSelected = true;
+        }
+
+        UpdateSelectionState();
+        return UpdatePackagesAsync(all, $"Deseja atualizar todos os {all.Length} aplicativo(s) da lista?");
+    }
+
+    /// <summary>
+    /// Pede confirmação e atualiza os pacotes em sequência. Revalida a lista de exclusões antes de
+    /// cada pacote, porque ela pode ter mudado depois da consulta.
+    /// </summary>
+    private async Task UpdatePackagesAsync(UpdateItemViewModel[] packages, string confirmationMessage)
+    {
+        if (packages.Length == 0)
         {
             return;
         }
 
-        if (!_confirmation.Confirm(
-                "Confirmar atualização",
-                $"Deseja atualizar {selectedPackages.Length} aplicativo(s) selecionado(s)?"))
+        if (!_confirmation.Confirm("Confirmar atualização", confirmationMessage))
         {
             StatusMessage = "A atualização não foi iniciada.";
             return;
@@ -231,35 +274,35 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         var startedAt = DateTimeOffset.Now;
         IsUpdating = true;
         IsError = false;
-        CompletedUpdates = 0;
         UpdateProgress = 0;
+        var completed = 0;
         _updateCancellation = new CancellationTokenSource();
         try
         {
-            foreach (var package in selectedPackages)
+            foreach (var package in packages)
             {
                 CurrentPackageName = package.Name;
                 if (_excludedPackagesStore.IsExcluded(package.Package))
                 {
                     package.Status = PackageUpdateStatus.Ignored;
                     package.StatusMessage = "Excluído da atualização antes da execução.";
-                    CompletedUpdates++;
-                    UpdateProgress = (double)CompletedUpdates / selectedPackages.Length * 100;
-                    continue;
+                }
+                else
+                {
+                    package.Status = PackageUpdateStatus.InProgress;
+                    package.StatusMessage = "Instalação em andamento…";
+                    StatusMessage = $"Atualizando {package.Name} ({completed + 1} de {packages.Length})…";
+                    var result = await _wingetService.UpgradeAsync(package.Package, _updateCancellation.Token);
+                    package.Status = result.Status;
+                    package.StatusMessage = result.Message;
                 }
 
-                package.Status = PackageUpdateStatus.InProgress;
-                package.StatusMessage = "Instalação em andamento…";
-                StatusMessage = $"Atualizando {package.Name}…";
-                var result = await _wingetService.UpgradeAsync(package.Package, _updateCancellation.Token);
-                package.Status = result.Status;
-                package.StatusMessage = result.Message;
-                CompletedUpdates++;
-                UpdateProgress = (double)CompletedUpdates / selectedPackages.Length * 100;
+                completed++;
+                UpdateProgress = (double)completed / packages.Length * 100;
 
-                if (result.Status == PackageUpdateStatus.Canceled)
+                if (package.Status == PackageUpdateStatus.Canceled)
                 {
-                    foreach (var remaining in selectedPackages.Skip(CompletedUpdates))
+                    foreach (var remaining in packages.Skip(completed))
                     {
                         remaining.Status = PackageUpdateStatus.Canceled;
                         remaining.StatusMessage = "Não iniciado porque a operação foi cancelada.";
@@ -269,12 +312,12 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
                 }
             }
 
-            var hasFailures = selectedPackages.Any(package => package.Status == PackageUpdateStatus.Failed);
+            var hasFailures = packages.Any(package => package.Status == PackageUpdateStatus.Failed);
             StatusMessage = _updateCancellation.IsCancellationRequested
                 ? "A atualização foi cancelada. O instalador externo pode não ter revertido alterações."
                 : hasFailures
-                    ? $"{CompletedUpdates} aplicativo(s) processado(s); pelo menos um falhou."
-                    : $"{CompletedUpdates} aplicativo(s) processado(s).";
+                    ? $"{completed} aplicativo(s) processado(s); pelo menos um falhou."
+                    : $"{completed} aplicativo(s) processado(s).";
             _notificationService?.Publish(new(
                 _updateCancellation.IsCancellationRequested
                     ? NotificationKind.Informacao
@@ -288,15 +331,13 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         }
         finally
         {
-            _historyStore.Append(CreateUpdateHistory(selectedPackages, startedAt));
+            _historyStore.Append(CreateUpdateHistory(packages, startedAt));
             _updateCancellation?.Dispose();
             _updateCancellation = null;
             IsUpdating = false;
             CurrentPackageName = string.Empty;
         }
     }
-
-    private bool CanUpdateSelected() => HasSelectedPackages && !IsLoading && !IsUpdating;
 
     private void CancelUpdate() => _updateCancellation?.Cancel();
 
@@ -317,58 +358,35 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
 
         _filteredPackages.Refresh();
         OnPropertyChanged(nameof(HasPackages));
-        OnPropertyChanged(nameof(HasSelectedPackages));
-        OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(EmptyStateMessage));
-        UpdateCommandStates();
-    }
-
-    private void SelectAll()
-    {
-        foreach (var package in _filteredPackages.Cast<UpdateItemViewModel>())
-        {
-            package.IsSelected = true;
-        }
-
-        UpdateCommandStates();
-    }
-
-    private void ClearSelection()
-    {
-        foreach (var package in Packages)
-        {
-            package.IsSelected = false;
-        }
-
-        UpdateCommandStates();
+        UpdateSelectionState();
     }
 
     private void OnPackagePropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
     {
         if (eventArgs.PropertyName == nameof(UpdateItemViewModel.IsSelected))
         {
-            UpdateCommandStates();
+            UpdateSelectionState();
         }
     }
 
-    private void UpdateCommandStates()
+    /// <summary>Avisa a tela de tudo que depende da seleção: contador, caixa "todos" e botões.</summary>
+    private void UpdateSelectionState()
     {
         OnPropertyChanged(nameof(HasSelectedPackages));
         OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(AreAllSelected));
         RaiseCommandStates();
     }
 
     private void RaiseCommandStates()
     {
         RefreshCommand.RaiseCanExecuteChanged();
-        SelectAllCommand.RaiseCanExecuteChanged();
-        ClearSelectionCommand.RaiseCanExecuteChanged();
         UpdateSelectedCommand.RaiseCanExecuteChanged();
+        UpdateAllCommand.RaiseCanExecuteChanged();
         CancelUpdateCommand.RaiseCanExecuteChanged();
         ExcludeSelectedCommand.RaiseCanExecuteChanged();
     }
-
-    private bool CanExcludeSelected() => HasSelectedPackages && !IsLoading && !IsUpdating;
 
     private void ExcludeSelected()
     {
@@ -411,9 +429,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
                 PackageUpdateStatus.NotStarted,
                 "Atualização disponível.")).ToArray());
 
-    private static HistoryEntry CreateUpdateHistory(
-        UpdateItemViewModel[] packages,
-        DateTimeOffset startedAt)
+    private static HistoryEntry CreateUpdateHistory(UpdateItemViewModel[] packages, DateTimeOffset startedAt)
     {
         var status = packages.Any(package => package.Status == PackageUpdateStatus.Canceled)
             ? HistoryEntryStatus.Cancelado

@@ -1,0 +1,165 @@
+<!--
+    Página Atualizações (DataContext: UpdatesPageViewModel).
+    ┌ título ─────────────────────────── [Buscar atualizações] ┐
+    │ caixa de estado e progresso                              │
+    │ ┌ lista ──────────────────────────────────────────────┐  │
+    │ │ [✓] Aplicativo  Instalada  Disponível  Origem Estado│  │
+    │ │ ...                                                 │  │
+    │ │ rodapé: N selecionados · Excluir · Cancelar         │  │
+    │ │                  [Atualizar todos] [Atualizar sel.] │  │
+    │ └─────────────────────────────────────────────────────┘  │
+    └──────────────────────────────────────────────────────────┘
+    A busca roda sozinha ao abrir a página (veja MainWindowViewModel.OnPageOpened).
+-->
+<UserControl x:Class="Atualizador.Windows.Views.Pages.UpdatesPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Título e ação principal -->
+        <DockPanel Grid.Row="0">
+            <Button DockPanel.Dock="Right" Margin="16,2,0,0" VerticalAlignment="Top"
+                    Content="Buscar atualizações"
+                    Command="{Binding RefreshCommand}"
+                    ToolTip="Consultar o WinGet e listar os aplicativos com atualização disponível."
+                    Style="{DynamicResource PrimaryButtonStyle}" />
+            <StackPanel>
+                <TextBlock Text="{Binding Title}" Style="{DynamicResource SectionTitleTextStyle}" />
+                <TextBlock Margin="0,6,0,0" Text="{Binding Description}" TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}" />
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Estado da última operação e progresso -->
+        <Border Grid.Row="1" Margin="0,20,0,16" Style="{DynamicResource StatusPanelStyle}">
+            <StackPanel>
+                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Style="{DynamicResource StatusTextStyle}" />
+                <TextBlock Margin="0,6,0,0" Text="{Binding CurrentPackageName}" TextWrapping="Wrap" Style="{DynamicResource CaptionTextStyle}" />
+                <ProgressBar Margin="0,10,0,0" Height="5" Minimum="0" Maximum="100"
+                             Value="{Binding UpdateProgress, Mode=OneWay}"
+                             IsIndeterminate="{Binding IsLoading, Mode=OneWay}"
+                             Style="{DynamicResource ProgressBarStyle}" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2" Style="{DynamicResource ListCardStyle}">
+            <DockPanel>
+                <!-- Rodapé destacado com as ações sobre a lista -->
+                <Border DockPanel.Dock="Bottom" Style="{DynamicResource ActionFooterStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <WrapPanel Grid.Column="0" Style="{DynamicResource ActionBarStyle}" Margin="0" VerticalAlignment="Center">
+                            <Button Margin="{StaticResource ActionItemMargin}" Content="Excluir da atualização"
+                                    Command="{Binding ExcludeSelectedCommand}"
+                                    ToolTip="Não oferecer mais atualizações para os aplicativos selecionados. Desfaça em Configurações."
+                                    AutomationProperties.Name="Excluir aplicativos selecionados da atualização"
+                                    Style="{DynamicResource SecondaryButtonStyle}" />
+                            <Button Margin="{StaticResource ActionItemMargin}" Content="Cancelar"
+                                    Command="{Binding CancelUpdateCommand}"
+                                    ToolTip="Cancelar o processo atual. O instalador externo pode não reverter alterações."
+                                    Style="{DynamicResource SecondaryButtonStyle}" />
+                        </WrapPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                            <Button Margin="{StaticResource ActionItemMargin}" Content="Atualizar todos"
+                                    Command="{Binding UpdateAllCommand}"
+                                    ToolTip="Atualizar todos os aplicativos da lista, um de cada vez."
+                                    Style="{DynamicResource SecondaryButtonStyle}" />
+                            <Button Margin="0,0,0,8"
+                                    Content="{Binding SelectedCount}" ContentStringFormat="Atualizar selecionados ({0})"
+                                    Command="{Binding UpdateSelectedCommand}"
+                                    ToolTip="Atualizar só os aplicativos marcados."
+                                    AutomationProperties.Name="Atualizar selecionados"
+                                    Style="{DynamicResource PrimaryButtonStyle}" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Cabeçalho: as colunas precisam ser iguais às do ItemTemplate. -->
+                <Grid DockPanel.Dock="Top" Margin="16,10,16,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="34" />
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="1.1*" />
+                        <ColumnDefinition Width="1.1*" />
+                        <ColumnDefinition Width="0.8*" />
+                        <ColumnDefinition Width="1.4*" />
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" IsChecked="{Binding AreAllSelected, Mode=TwoWay}" Style="{DynamicResource SelectAllCheckBoxStyle}" />
+                    <TextBlock Grid.Column="1" Margin="8,0,8,0" Text="Aplicativo" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                    <TextBlock Grid.Column="2" Margin="0,0,8,0" Text="Instalada" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                    <TextBlock Grid.Column="3" Margin="0,0,8,0" Text="Disponível" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                    <TextBlock Grid.Column="4" Margin="0,0,8,0" Text="Origem" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                    <TextBlock Grid.Column="5" Margin="0,0,8,0" Text="Estado" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                </Grid>
+
+                <Grid>
+                    <!-- Lista vazia ou carregando -->
+                    <TextBlock Margin="24,12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Text="{Binding EmptyStateMessage}" TextWrapping="Wrap" TextAlignment="Center">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource BodyTextStyle}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasPackages}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ListView ItemsSource="{Binding FilteredPackages}"
+                              Margin="8,0,8,4"
+                              Style="{DynamicResource UpdateListStyle}"
+                              ItemContainerStyle="{DynamicResource UpdateListItemStyle}"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              ScrollViewer.CanContentScroll="True"
+                              AutomationProperties.Name="Lista de atualizações">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="1.1*" />
+                                        <ColumnDefinition Width="1.1*" />
+                                        <ColumnDefinition Width="0.8*" />
+                                        <ColumnDefinition Width="1.4*" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}">
+                                        <CheckBox.Style>
+                                            <Style TargetType="CheckBox" BasedOn="{StaticResource CheckBoxStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DataContext.IsBusy, RelativeSource={RelativeSource AncestorType=ListView}}" Value="True">
+                                                        <Setter Property="IsEnabled" Value="False" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </CheckBox.Style>
+                                    </CheckBox>
+                                    <StackPanel Grid.Column="1" Margin="8,0,8,0">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Id}" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{Binding InstalledVersion}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="3" Text="{Binding AvailableVersion}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="4" Text="{Binding Source}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="5" Text="{Binding StatusMessage}" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

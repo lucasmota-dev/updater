@@ -30,6 +30,7 @@ public sealed class DisplayTextConverter : IValueConverter
         HistoryOperation.Descoberta => "Verificação",
         HistoryOperation.Atualizacao => "Atualização",
         HistoryOperation.Instalacao => "Instalação",
+        HistoryOperation.WindowsUpdate => "Windows Update",
 
         HistoryEntryStatus status => StatusText(status.ToString()),
         HistoryStatusFilter.Todos => "Todos os resultados",

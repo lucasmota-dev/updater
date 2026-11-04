@@ -48,6 +48,50 @@
     </Style>
     <Thickness x:Key="ActionItemMargin">0,0,8,8</Thickness>
 
+    <!-- Caixa de estado de cada página (mensagem + progresso). Fica vermelha quando IsError = true. -->
+    <Style x:Key="StatusPanelStyle" TargetType="Border">
+        <Setter Property="Padding" Value="14,10" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Background" Value="{DynamicResource SubtleAccentBrush}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsError}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ErrorSubtleBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Cartão que envolve as listas (cabeçalho, itens e barra de ações). -->
+    <Style x:Key="ListCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+    </Style>
+
+    <!-- Barra de ações no rodapé das listas, destacada com a cor de destaque. -->
+    <Style x:Key="ActionFooterStyle" TargetType="Border">
+        <Setter Property="Padding" Value="12,10,12,2" />
+        <Setter Property="Background" Value="{DynamicResource SubtleAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
+        <Setter Property="CornerRadius" Value="0,0,10,10" />
+    </Style>
+
+    <!-- Desabilita o controle enquanto a página estiver ocupada (IsBusy = true). -->
+    <Style x:Key="SelectAllCheckBoxStyle" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="ToolTip" Value="Marcar ou desmarcar todos" />
+        <Setter Property="AutomationProperties.Name" Value="Marcar ou desmarcar todos" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                <Setter Property="IsEnabled" Value="False" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
     <Style x:Key="FocusVisualStyle" TargetType="Control">
         <Setter Property="Template">
             <Setter.Value>

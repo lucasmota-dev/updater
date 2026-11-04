@@ -6,8 +6,9 @@ Feito em C#, WPF e .NET 10. Interface em português do Brasil.
 
 ## Recursos
 
-- **Atualizações:** lista os aplicativos instalados que têm versão mais nova no WinGet. Você marca quais quer atualizar e acompanha o progresso de cada um.
-- **Instalar:** pesquisa aplicativos no catálogo do WinGet e instala os selecionados.
+- **Atualizações:** ao abrir, lista os aplicativos instalados que têm versão mais nova no WinGet. Você atualiza os marcados ou todos de uma vez e acompanha o progresso de cada um.
+- **Instalar:** pesquisa aplicativos no catálogo do WinGet, mesmo com o nome aproximado ("firefox br", "firfox"), e instala os selecionados.
+- **Windows Update:** procura e instala as atualizações do próprio Windows. A permissão de administrador é pedida só na hora de instalar, e o app avisa quando é preciso reiniciar.
 - **Exclusões:** aplicativos que você não quer atualizar (por exemplo, uma versão específica de que você depende) ficam fora das verificações, manuais ou agendadas.
 - **Agendamento:** atualização automática a cada intervalo de horas, diária ou semanal, por uma tarefa do Agendador de Tarefas do Windows.
 - **Histórico:** registro local de todas as verificações, atualizações e instalações.
@@ -50,16 +51,18 @@ As preferências e o histórico ficam em `%LOCALAPPDATA%\Atualizador.Windows` e 
 - Atualização e instalação usam sempre o **ID exato** e a **origem** do pacote (`--id … --exact --source …`), nunca só o nome exibido.
 - Só a fonte `winget` é consultada. A Microsoft Store (`msstore`) não é suportada.
 - As tarefas agendadas rodam com a sua conta, sem elevação, e sempre executam o mesmo comando fixo.
+- Para instalar atualizações do Windows, o app abre uma cópia de si mesmo como administrador (aviso do UAC) com um argumento fixo. Essa cópia não recebe nenhum outro dado da janela e envia o progresso por um *named pipe*.
 - A atualização do próprio app só aceita downloads de `github.com` e confere o SHA-256 do instalador antes de executá-lo.
 
 Cancelar uma atualização interrompe o WinGet, mas um instalador que já começou pode não desfazer o que fez.
 
 ## Privacidade
 
-O App Updater não coleta dados pessoais, não usa telemetria e não envia a lista dos seus aplicativos para nenhum servidor. Ele só se conecta à internet em dois casos:
+O App Updater não coleta dados pessoais, não usa telemetria e não envia a lista dos seus aplicativos para nenhum servidor. Ele só se conecta à internet nestes casos:
 
-1. **WinGet:** quando você busca atualizações, pesquisa ou instala aplicativos, o WinGet consulta as fontes configuradas no Windows e baixa os instaladores. Essas conexões seguem a política de privacidade da Microsoft e dos publicadores de cada aplicativo.
-2. **Nova versão do App Updater:** ao abrir, o app consulta as releases deste repositório no GitHub (`api.github.com`). Para desligar essa consulta, desmarque **Procurar nova versão ao abrir o aplicativo** em **Configurações › Sobre o App Updater**. Essa conexão segue a [política de privacidade do GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
+1. **WinGet:** ao abrir a página Atualizações e quando você busca, pesquisa ou instala aplicativos, o WinGet consulta as fontes configuradas no Windows e baixa os instaladores. Essas conexões seguem a política de privacidade da Microsoft e dos publicadores de cada aplicativo.
+2. **Nova versão do App Updater:** ao abrir, o app consulta as releases deste repositório no GitHub (`api.github.com`). Para desligar essa consulta, desmarque **Procurar nova versão ao abrir o aplicativo** na página **Sobre**. Essa conexão segue a [política de privacidade do GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
+3. **Windows Update:** ao abrir a página Windows Update e ao instalar, o Windows Update Agent do próprio Windows consulta e baixa as atualizações dos servidores da Microsoft, como a tela Configurações do Windows faz.
 
 Preferências e histórico ficam só no seu computador. O instalador mostra este aviso antes de instalar (`installer/PRIVACIDADE.txt`).
 

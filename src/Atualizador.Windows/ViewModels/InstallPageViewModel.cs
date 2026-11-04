@@ -85,8 +85,6 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
         };
 
         SearchCommand = new AsyncDelegateCommand(SearchAsync, CanSearch);
-        SelectAllCommand = new DelegateCommand(SelectAll, () => HasPackages && !IsInstalling);
-        ClearSelectionCommand = new DelegateCommand(ClearSelection, () => HasSelectedPackages && !IsInstalling);
         InstallSelectedCommand = new AsyncDelegateCommand(InstallSelectedAsync, CanInstallSelected);
         CancelInstallCommand = new DelegateCommand(CancelInstall, () => IsInstalling);
     }
@@ -116,6 +114,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
             {
                 _filteredPackages.Refresh();
                 OnPropertyChanged(nameof(HasPackages));
+                OnPropertyChanged(nameof(AreAllSelected));
             }
         }
     }
@@ -176,9 +175,32 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
 
     public AsyncDelegateCommand SearchCommand { get; }
 
-    public DelegateCommand SelectAllCommand { get; }
+    /// <summary>Pesquisa ou instalação em andamento: bloqueia a seleção.</summary>
+    public bool IsBusy => IsSearching || IsInstalling;
 
-    public DelegateCommand ClearSelectionCommand { get; }
+    /// <summary>
+    /// Caixa "marcar/desmarcar todos" do cabeçalho: marcada se todos os resultados visíveis estão
+    /// marcados, desmarcada se nenhum, indeterminada (null) se só alguns.
+    /// </summary>
+    public bool? AreAllSelected
+    {
+        get
+        {
+            var visible = _filteredPackages.Cast<InstallItemViewModel>().ToArray();
+            var selected = visible.Count(package => package.IsSelected);
+            return selected == 0 ? false : selected == visible.Length ? true : null;
+        }
+        set
+        {
+            var select = value == true;
+            foreach (var package in _filteredPackages.Cast<InstallItemViewModel>())
+            {
+                package.IsSelected = select;
+            }
+
+            RaiseSelectionChanged();
+        }
+    }
 
     public AsyncDelegateCommand InstallSelectedCommand { get; }
 
@@ -331,26 +353,6 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
 
     private bool CanInstallSelected() => HasSelectedPackages && !IsSearching && !IsInstalling;
 
-    private void SelectAll()
-    {
-        foreach (var package in _filteredPackages.Cast<InstallItemViewModel>())
-        {
-            package.IsSelected = true;
-        }
-
-        RaiseSelectionChanged();
-    }
-
-    private void ClearSelection()
-    {
-        foreach (var package in Packages)
-        {
-            package.IsSelected = false;
-        }
-
-        RaiseSelectionChanged();
-    }
-
     private void ReplacePackages(IEnumerable<InstallablePackage> packages)
     {
         foreach (var existing in Packages)
@@ -383,15 +385,14 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
     {
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(HasSelectedPackages));
+        OnPropertyChanged(nameof(AreAllSelected));
         InstallSelectedCommand.RaiseCanExecuteChanged();
-        ClearSelectionCommand.RaiseCanExecuteChanged();
     }
 
     private void RaiseCommandStates()
     {
+        OnPropertyChanged(nameof(IsBusy));
         SearchCommand.RaiseCanExecuteChanged();
-        SelectAllCommand.RaiseCanExecuteChanged();
-        ClearSelectionCommand.RaiseCanExecuteChanged();
         InstallSelectedCommand.RaiseCanExecuteChanged();
         CancelInstallCommand.RaiseCanExecuteChanged();
     }

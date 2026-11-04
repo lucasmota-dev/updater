@@ -4,9 +4,11 @@ O App Updater não coleta dados pessoais, não usa telemetria e não envia a lis
 
 Conexões que o aplicativo faz:
 
-1. WinGet. Quando você busca atualizações, pesquisa ou instala aplicativos, o App Updater executa o WinGet, o gerenciador de pacotes do Windows. O WinGet consulta as fontes configuradas no Windows (por padrão, o catálogo "winget" da Microsoft) e baixa os instaladores. Essas conexões seguem a política de privacidade da Microsoft e dos publicadores de cada aplicativo.
+1. WinGet. Ao abrir a página Atualizações e quando você busca, pesquisa ou instala aplicativos, o App Updater executa o WinGet, o gerenciador de pacotes do Windows. O WinGet consulta as fontes configuradas no Windows (por padrão, o catálogo "winget" da Microsoft) e baixa os instaladores. Essas conexões seguem a política de privacidade da Microsoft e dos publicadores de cada aplicativo.
 
-2. Nova versão do App Updater. Ao abrir, o aplicativo consulta a página de releases do projeto no GitHub (api.github.com e github.com) para saber se existe uma versão mais nova. A consulta envia apenas o que qualquer acesso à internet envia (endereço IP e identificação do programa). Essa conexão segue a política de privacidade do GitHub. Para desligá-la, abra Configurações > Sobre o App Updater e desmarque "Procurar nova versão ao abrir o aplicativo".
+2. Nova versão do App Updater. Ao abrir, o aplicativo consulta a página de releases do projeto no GitHub (api.github.com e github.com) para saber se existe uma versão mais nova. A consulta envia apenas o que qualquer acesso à internet envia (endereço IP e identificação do programa). Essa conexão segue a política de privacidade do GitHub. Para desligá-la, abra a página Sobre e desmarque "Procurar nova versão ao abrir o aplicativo".
+
+3. Windows Update. Ao abrir a página Windows Update e ao instalar, o Windows Update Agent do próprio Windows consulta e baixa as atualizações dos servidores da Microsoft, como a tela Configurações do Windows faz. Essas conexões seguem a política de privacidade da Microsoft.
 
 As preferências e o histórico ficam somente neste computador, na pasta %LOCALAPPDATA%\Atualizador.Windows.
 
