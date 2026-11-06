@@ -3,7 +3,7 @@
     ┌ título ─────────────────────────── [Buscar atualizações] ┐
     │ caixa de estado e progresso                              │
     │ ┌ lista ──────────────────────────────────────────────┐  │
-    │ │ [✓] Aplicativo  Instalada  Disponível  Origem Estado│  │
+    │ │ [✓] Aplicativo  Instalada  Disponível  Estado       │  │
     │ │ ...                                                 │  │
     │ │ rodapé: N selecionados · Excluir · Cancelar         │  │
     │ │                  [Atualizar todos] [Atualizar sel.] │  │
@@ -88,15 +88,13 @@
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="1.1*" />
                         <ColumnDefinition Width="1.1*" />
-                        <ColumnDefinition Width="0.8*" />
                         <ColumnDefinition Width="1.4*" />
                     </Grid.ColumnDefinitions>
                     <CheckBox Grid.Column="0" IsChecked="{Binding AreAllSelected, Mode=TwoWay}" Style="{DynamicResource SelectAllCheckBoxStyle}" />
                     <TextBlock Grid.Column="1" Margin="8,0,8,0" Text="Aplicativo" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
                     <TextBlock Grid.Column="2" Margin="0,0,8,0" Text="Instalada" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
                     <TextBlock Grid.Column="3" Margin="0,0,8,0" Text="Disponível" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
-                    <TextBlock Grid.Column="4" Margin="0,0,8,0" Text="Origem" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
-                    <TextBlock Grid.Column="5" Margin="0,0,8,0" Text="Estado" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                    <TextBlock Grid.Column="4" Margin="0,0,8,0" Text="Estado" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
                 </Grid>
 
                 <Grid>
@@ -131,7 +129,6 @@
                                         <ColumnDefinition Width="2*" />
                                         <ColumnDefinition Width="1.1*" />
                                         <ColumnDefinition Width="1.1*" />
-                                        <ColumnDefinition Width="0.8*" />
                                         <ColumnDefinition Width="1.4*" />
                                     </Grid.ColumnDefinitions>
                                     <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected, Mode=TwoWay}"
@@ -156,8 +153,7 @@
                                     </DockPanel>
                                     <TextBlock Grid.Column="2" Text="{Binding InstalledVersion}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                     <TextBlock Grid.Column="3" Text="{Binding AvailableVersion}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Column="4" Text="{Binding Source}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Grid.Column="5" Text="{Binding StatusMessage}" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                    <TextBlock Grid.Column="4" Text="{Binding StatusMessage}" VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
                                 </Grid>
                             </DataTemplate>
                         </ListView.ItemTemplate>

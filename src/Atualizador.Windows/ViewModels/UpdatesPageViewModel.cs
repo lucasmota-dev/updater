@@ -54,7 +54,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         Packages = [];
         _filteredPackages = new ListCollectionView(Packages);
         _filteredPackages.SortDescriptions.Add(new SortDescription(nameof(UpdateItemViewModel.Name), ListSortDirection.Ascending));
-        RefreshCommand = new AsyncDelegateCommand(RefreshAsync, () => !IsBusy);
+        RefreshCommand = new AsyncDelegateCommand(() => RefreshAsync(), () => !IsBusy);
         UpdateSelectedCommand = new AsyncDelegateCommand(UpdateSelectedAsync, () => HasSelectedPackages && !IsBusy);
         UpdateAllCommand = new AsyncDelegateCommand(UpdateAllAsync, () => HasPackages && !IsBusy);
         CancelUpdateCommand = new DelegateCommand(CancelUpdate, () => IsUpdating);
@@ -181,13 +181,17 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     /// <summary>
     /// Consulta o WinGet, remove os pacotes excluídos, substitui a lista e registra o resultado no histórico.
     /// </summary>
-    private async Task RefreshAsync()
+    /// <param name="updateSummary">
+    /// Resumo da atualização que acabou de terminar. Quando informado, a consulta não publica a
+    /// notificação "Atualizações encontradas" e o resumo continua visível antes do resultado da consulta.
+    /// </param>
+    private async Task RefreshAsync(string? updateSummary = null)
     {
         var startedAt = DateTimeOffset.Now;
         _lastRefreshAt = startedAt;
         IsLoading = true;
         IsError = false;
-        StatusMessage = "Consultando o WinGet…";
+        StatusMessage = updateSummary is null ? "Consultando o WinGet…" : $"{updateSummary} Atualizando a lista…";
         OnPropertyChanged(nameof(EmptyStateMessage));
         try
         {
@@ -211,7 +215,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
                 or WingetDiscoveryStatus.SourceFailed
                 or WingetDiscoveryStatus.WinGetUnavailable;
             StatusMessage = displayResult.Message;
-            if (displayResult.Status == WingetDiscoveryStatus.Success)
+            if (displayResult.Status == WingetDiscoveryStatus.Success && updateSummary is null)
             {
                 _notificationService?.Publish(new(NotificationKind.Informacao, "Atualizações encontradas", displayResult.Message));
             }
@@ -236,6 +240,11 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         }
         finally
         {
+            if (updateSummary is not null)
+            {
+                StatusMessage = $"{updateSummary} {StatusMessage}";
+            }
+
             IsLoading = false;
             OnPropertyChanged(nameof(EmptyStateMessage));
             UpdateSelectionState();
@@ -262,7 +271,8 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
 
     /// <summary>
     /// Pede confirmação e atualiza os pacotes em sequência. Revalida a lista de exclusões antes de
-    /// cada pacote, porque ela pode ter mudado depois da consulta.
+    /// cada pacote, porque ela pode ter mudado depois da consulta. No fim, consulta o WinGet de novo
+    /// para a lista mostrar só o que ainda tem atualização (também após cancelamento ou falha).
     /// </summary>
     private async Task UpdatePackagesAsync(UpdateItemViewModel[] packages, string confirmationMessage)
     {
@@ -365,6 +375,8 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
             IsUpdating = false;
             CurrentPackageName = string.Empty;
         }
+
+        await RefreshAsync(StatusMessage);
     }
 
     private void CancelUpdate() => _updateCancellation?.Cancel();

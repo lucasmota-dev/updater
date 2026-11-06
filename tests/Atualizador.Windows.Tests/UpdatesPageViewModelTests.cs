@@ -50,6 +50,18 @@ public sealed class UpdatesPageViewModelTests
     }
 
     [TestMethod]
+    public async Task Update_QueriesWinGetAgainWhenFinished()
+    {
+        var (viewModel, service) = CreateViewModel(Package("A.One"), Package("B.Two"));
+        await viewModel.RefreshIfStaleAsync();
+
+        viewModel.UpdateAllCommand.Execute(null);
+        await WaitUntilAsync(() => !viewModel.IsBusy && service.DiscoveryCalls == 2);
+
+        StringAssert.StartsWith(viewModel.StatusMessage, "2 aplicativo(s) processado(s).");
+    }
+
+    [TestMethod]
     public async Task RefreshIfStale_DoesNotQueryAgainRightAfterARefresh()
     {
         var (viewModel, service) = CreateViewModel(Package("A.One"));
