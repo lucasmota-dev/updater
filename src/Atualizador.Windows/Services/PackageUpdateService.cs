@@ -29,6 +29,10 @@ public interface IPackageUpdateService
         InstallablePackage package,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Site do aplicativo (ou do publicador) informado no manifesto. Usado só para buscar o ícone.</summary>
+    Task<Uri?> GetWebsiteAsync(string id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<Uri?>(null);
+
     /// <summary>Instala como administrador (aviso do UAC). Só para instaladores que exigem elevação.</summary>
     Task<PackageInstallResult> InstallElevatedAsync(InstallablePackage package, CancellationToken cancellationToken = default) =>
         Task.FromResult(new PackageInstallResult(package, PackageUpdateStatus.Failed, "Instalação como administrador não disponível."));

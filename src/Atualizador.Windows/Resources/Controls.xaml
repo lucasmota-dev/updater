@@ -723,6 +723,29 @@
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
 
+    <!--
+        Ícone do aplicativo (PackageIconViewModel) nas listas: 28 px, cantos de 7 px.
+        Enquanto não há imagem, ou se ela não existir, mostra a inicial do nome sobre o tom da cor de destaque.
+        A imagem é decorativa: o nome do aplicativo já está na linha (e na caixa de seleção).
+    -->
+    <DataTemplate x:Key="PackageIconTemplate">
+        <Grid Width="28" Height="28" Focusable="False" IsHitTestVisible="False">
+            <Border x:Name="monogram" CornerRadius="7" Background="{DynamicResource SubtleAccentBrush}">
+                <TextBlock Text="{Binding Initial}" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AccentBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <Image x:Name="image" Source="{Binding Image}" Stretch="Uniform" Visibility="Collapsed"
+                   RenderOptions.BitmapScalingMode="HighQuality" />
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding HasImage}" Value="True">
+                <Setter TargetName="image" Property="Visibility" Value="Visible" />
+                <Setter TargetName="monogram" Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
     <!-- Linha de lista: separador fino embaixo, fundo suave ao passar o mouse e tingido quando selecionada. -->
     <Style x:Key="UpdateListItemStyle" TargetType="ListViewItem">
         <Setter Property="Padding" Value="8,6" />

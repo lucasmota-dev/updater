@@ -143,10 +143,14 @@
                                             </Style>
                                         </CheckBox.Style>
                                     </CheckBox>
-                                    <StackPanel Grid.Column="1" Margin="8,0,8,0">
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Publisher}" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
-                                    </StackPanel>
+                                    <DockPanel Grid.Column="1" Margin="8,0,8,0">
+                                        <ContentPresenter DockPanel.Dock="Left" Margin="0,0,10,0" VerticalAlignment="Center"
+                                                          Content="{Binding Icon}" ContentTemplate="{StaticResource PackageIconTemplate}" />
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Publisher}" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
+                                        </StackPanel>
+                                    </DockPanel>
                                     <TextBlock Grid.Column="2" Text="{Binding Id}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}" />
                                     <TextBlock Grid.Column="3" Text="{Binding Version}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                     <TextBlock Grid.Column="4" Text="{Binding Source}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -213,6 +217,8 @@
                                 <TextBlock DockPanel.Dock="Right" Width="240" Margin="8,0,0,0" VerticalAlignment="Center"
                                            Text="{Binding StatusMessage}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
                                            Style="{DynamicResource CaptionTextStyle}" />
+                                <ContentPresenter DockPanel.Dock="Left" Margin="0,0,10,0" VerticalAlignment="Center"
+                                                  Content="{Binding Icon}" ContentTemplate="{StaticResource PackageIconTemplate}" />
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                     <TextBlock TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionTextStyle}">

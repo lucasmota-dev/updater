@@ -312,6 +312,28 @@ public sealed partial class WingetService : IPackageUpdateService
     }
 
     /// <summary>
+    /// Lê o site do aplicativo com <c>winget show</c>. Só consulta o manifesto; não instala nada.
+    /// Retorna <c>null</c> se o ID não for válido, o WinGet falhar ou o manifesto não tiver site.
+    /// </summary>
+    public async Task<Uri?> GetWebsiteAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (!IsSafeIdentifier(id) || _locator.Locate() is not { } wingetPath)
+        {
+            return null;
+        }
+
+        var result = await ExecuteAsync(
+            wingetPath,
+            ["show", "--id", id, "--exact", "--source", "winget", "--disable-interactivity"],
+            QueryTimeout,
+            cancellationToken);
+
+        return result.Started && result.ExitCode == 0
+            ? WingetShowParser.ParseWebsite(result.StandardOutput)
+            : null;
+    }
+
+    /// <summary>
     /// Instala com permissão de administrador, para os poucos instaladores que exigem isso.
     /// Abre o <c>winget.exe</c> com <c>runas</c> (o Windows mostra o aviso do UAC) só para este pacote.
     /// </summary>

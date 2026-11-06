@@ -3,12 +3,15 @@ using Atualizador.Windows.Models;
 namespace Atualizador.Windows.ViewModels;
 
 /// <summary>Um aplicativo na fila de instalação: o pacote e o estado da instalação dele.</summary>
-public sealed class InstallQueueItemViewModel(InstallablePackage package) : ViewModelBase
+public sealed class InstallQueueItemViewModel(InstallablePackage package, PackageIconViewModel? icon = null) : ViewModelBase
 {
     private PackageUpdateStatus _status = PackageUpdateStatus.NotStarted;
     private string _statusMessage = "Na fila";
 
     public InstallablePackage Package { get; } = package;
+
+    /// <summary>O mesmo ícone do resultado da pesquisa, para não buscá-lo de novo.</summary>
+    public PackageIconViewModel Icon { get; } = icon ?? new(package.Name, package.Id, null);
 
     public string Name => Package.Name;
 

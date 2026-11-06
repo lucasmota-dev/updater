@@ -21,11 +21,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         var historyStore = new HistoryStore();
         var wingetService = new WingetService();
         var excludedPackagesStore = new ExcludedPackagesStore();
+        var iconService = new PackageIconService(wingetService);
 
         // Trava compartilhada: a fila de instalação e as atualizações nunca rodam o instalador ao mesmo tempo.
         var operationGate = _operationGate;
-        UpdatesPage = new UpdatesPageViewModel(wingetService, historyStore, excludedPackagesStore, notificationService: _notifications, operationGate: operationGate);
-        InstallPage = new InstallPageViewModel(wingetService, historyStore, notificationService: _notifications, operationGate: operationGate);
+        UpdatesPage = new UpdatesPageViewModel(wingetService, historyStore, excludedPackagesStore, notificationService: _notifications, operationGate: operationGate, iconService: iconService);
+        InstallPage = new InstallPageViewModel(wingetService, historyStore, notificationService: _notifications, operationGate: operationGate, iconService: iconService);
         TraySettings = new TraySettingsViewModel(new TrayPreferencesStore());
         WindowsUpdatePage = new WindowsUpdatePageViewModel(historyStore, notifications: _notifications);
         HistoryPage = new HistoryPageViewModel(historyStore);

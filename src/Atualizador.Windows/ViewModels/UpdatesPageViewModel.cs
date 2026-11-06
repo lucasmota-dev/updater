@@ -24,6 +24,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
     private readonly IUserConfirmation _confirmation;
     private readonly NotificationService? _notificationService;
     private readonly PackageOperationGate _operationGate;
+    private readonly PackageIconService? _iconService;
     private bool _isLoading;
     private bool _isError;
     private bool _isUpdating;
@@ -39,7 +40,8 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         ExcludedPackagesStore? excludedPackagesStore = null,
         IUserConfirmation? confirmation = null,
         NotificationService? notificationService = null,
-        PackageOperationGate? operationGate = null)
+        PackageOperationGate? operationGate = null,
+        PackageIconService? iconService = null)
         : base("Atualizações", "Veja quais aplicativos instalados têm uma versão mais nova disponível.", "")
     {
         _wingetService = wingetService;
@@ -48,6 +50,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         _confirmation = confirmation ?? new MessageBoxUserConfirmation();
         _notificationService = notificationService;
         _operationGate = operationGate ?? new PackageOperationGate();
+        _iconService = iconService;
         Packages = [];
         _filteredPackages = new ListCollectionView(Packages);
         _filteredPackages.SortDescriptions.Add(new SortDescription(nameof(UpdateItemViewModel.Name), ListSortDirection.Ascending));
@@ -376,7 +379,7 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
         Packages.Clear();
         foreach (var package in packages)
         {
-            var item = new UpdateItemViewModel(package);
+            var item = new UpdateItemViewModel(package, _iconService);
             item.PropertyChanged += OnPackagePropertyChanged;
             Packages.Add(item);
         }
@@ -493,13 +496,15 @@ public sealed class UpdatesPageViewModel : PageViewModel, IDisposable
 }
 
 /// <summary>Uma linha da lista de atualizações: o pacote, a seleção e o estado da atualização.</summary>
-public sealed class UpdateItemViewModel(UpdatablePackage package) : ViewModelBase
+public sealed class UpdateItemViewModel(UpdatablePackage package, PackageIconService? iconService = null) : ViewModelBase
 {
     private bool _isSelected;
     private PackageUpdateStatus _status = PackageUpdateStatus.NotStarted;
     private string _statusMessage = string.Empty;
 
     public UpdatablePackage Package { get; } = package;
+
+    public PackageIconViewModel Icon { get; } = new(package.Name, package.Id, iconService);
 
     public string Name { get; } = package.Name;
 

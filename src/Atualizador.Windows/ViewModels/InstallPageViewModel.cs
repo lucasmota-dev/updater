@@ -7,12 +7,14 @@ using Atualizador.Windows.Services;
 namespace Atualizador.Windows.ViewModels;
 
 /// <summary>Uma linha da lista de resultados da pesquisa: o pacote, a seleção e se já está na fila.</summary>
-public sealed class InstallItemViewModel(InstallablePackage package) : ViewModelBase
+public sealed class InstallItemViewModel(InstallablePackage package, PackageIconService? iconService = null) : ViewModelBase
 {
     private bool _isSelected;
     private string _statusMessage = string.Empty;
 
     public InstallablePackage Package { get; } = package;
+
+    public PackageIconViewModel Icon { get; } = new(package.Name, package.Id, iconService);
 
     public string Name => Package.Name;
 
@@ -54,6 +56,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
     private readonly IUserConfirmation _confirmation;
     private readonly NotificationService? _notificationService;
     private readonly PackageOperationGate _operationGate;
+    private readonly PackageIconService? _iconService;
     private readonly ListCollectionView _filteredPackages;
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _searchCancellation;
@@ -70,7 +73,8 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
         HistoryStore? historyStore = null,
         IUserConfirmation? confirmation = null,
         NotificationService? notificationService = null,
-        PackageOperationGate? operationGate = null)
+        PackageOperationGate? operationGate = null,
+        PackageIconService? iconService = null)
         : base("Instalar", "Pesquise aplicativos do catálogo do WinGet e adicione-os à fila de instalação.", "")
     {
         _wingetService = wingetService;
@@ -78,6 +82,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
         _confirmation = confirmation ?? new MessageBoxUserConfirmation();
         _notificationService = notificationService;
         _operationGate = operationGate ?? new PackageOperationGate();
+        _iconService = iconService;
         _filteredPackages = new ListCollectionView(Packages) { Filter = FilterPackageItem };
 
         SearchCommand = new AsyncDelegateCommand(SearchAsync, () => !string.IsNullOrWhiteSpace(SearchQuery) && !IsSearching);
@@ -284,7 +289,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
 
         foreach (var package in toAdd)
         {
-            var item = new InstallQueueItemViewModel(package.Package);
+            var item = new InstallQueueItemViewModel(package.Package, package.Icon);
             item.PropertyChanged += OnQueueItemChanged;
             Queue.Add(item);
             package.IsSelected = false;
@@ -435,7 +440,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
         Packages.Clear();
         foreach (var package in packages)
         {
-            var item = new InstallItemViewModel(package);
+            var item = new InstallItemViewModel(package, _iconService);
             item.PropertyChanged += OnPackagePropertyChanged;
             Packages.Add(item);
         }

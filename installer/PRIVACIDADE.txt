@@ -10,6 +10,8 @@ Conexões que o aplicativo faz:
 
 3. Windows Update. Ao abrir a página Windows Update e ao instalar, o Windows Update Agent do próprio Windows consulta e baixa as atualizações dos servidores da Microsoft, como a tela Configurações do Windows faz. Essas conexões seguem a política de privacidade da Microsoft.
 
+4. Ícones dos aplicativos. Nas páginas Atualizações e Instalar, quando o aplicativo não está instalado ou o Windows não tem o ícone dele, o App Updater lê o site do aplicativo no catálogo do WinGet e baixa o ícone desse site (ou, para projetos no GitHub, a imagem do perfil do publicador em github.com). Cada site recebe apenas o que qualquer acesso à internet envia (endereço IP e identificação do programa) e pode saber que alguém exibiu aquele aplicativo. Os ícones ficam guardados por 30 dias na pasta %LOCALAPPDATA%\Atualizador.Windows\icons, então o mesmo site não é consultado de novo nesse período.
+
 As preferências e o histórico ficam somente neste computador, na pasta %LOCALAPPDATA%\Atualizador.Windows.
 
 Código-fonte: https://github.com/lucasmota-dev/updater
