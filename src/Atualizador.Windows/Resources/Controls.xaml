@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:conv="clr-namespace:Atualizador.Windows.Converters">
+                    xmlns:conv="clr-namespace:Atualizador.Windows.Converters"
+                    xmlns:behaviors="clr-namespace:Atualizador.Windows.Behaviors">
     <!--
         Componentes do app no design system "HIG Inspired", adaptado ao desktop (guia completo em
         .claude/skills/hig-inspired-desktop/SKILL.md do repositório local):
@@ -449,7 +450,40 @@
         </Setter>
     </Style>
 
-    <!-- Campo de texto: contorno de 3:1 (control-border), destaque no foco. O texto de "Tag" é a dica. -->
+    <!-- Botão ✕ dentro do campo de texto: ícone pequeno, cinza, com fundo só ao passar o mouse.
+         Não recebe foco pelo Tab (o teclado já apaga com Ctrl+A e Delete). -->
+    <Style x:Key="TextBoxClearButtonStyle" TargetType="Button">
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <TextBlock Text="&#xE711;" FontSize="10"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   Style="{StaticResource IconTextStyle}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SunkenHoverBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SunkenBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Campo de texto: contorno de 3:1 (control-border), destaque no foco. O texto de "Tag" é a dica.
+         Mostra um botão ✕ para limpar quando há texto. -->
     <Style x:Key="SettingsTextBoxStyle" TargetType="TextBox">
         <Setter Property="MinHeight" Value="30" />
         <Setter Property="Padding" Value="8,4" />
@@ -472,19 +506,35 @@
                             CornerRadius="8"
                             SnapsToDevicePixels="True">
                         <Grid Margin="{TemplateBinding Padding}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
                             <TextBlock x:Name="placeholder" Margin="2,0,0,0"
                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                        Text="{TemplateBinding Tag}"
+                                       TextTrimming="CharacterEllipsis"
                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                        IsHitTestVisible="False" Visibility="Collapsed" />
                             <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                           HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                            <!-- Botão ✕ que limpa o campo; some quando o campo está vazio ou só leitura. -->
+                            <Button x:Name="clearButton" Grid.Column="1" Margin="4,0,-4,0"
+                                    Command="{x:Static behaviors:TextBoxCommands.Clear}"
+                                    CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                    ToolTip="Limpar"
+                                    AutomationProperties.Name="Limpar texto"
+                                    Style="{StaticResource TextBoxClearButtonStyle}" />
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Text" Value="">
                             <Setter TargetName="placeholder" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="clearButton" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsReadOnly" Value="True">
+                            <Setter TargetName="clearButton" Property="Visibility" Value="Collapsed" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource FocusBrush}" />
