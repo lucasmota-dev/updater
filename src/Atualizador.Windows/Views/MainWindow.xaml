@@ -43,7 +43,12 @@
         <Border DockPanel.Dock="Bottom" Padding="16,4" Background="{DynamicResource WindowBackgroundBrush}"
                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Left" Style="{DynamicResource CaptionTextStyle}">
+                <!-- Logo do app em 16 px ao lado do nome. É decorativo: o nome já identifica o app. -->
+                <Image DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center"
+                       Source="/Atualizador.Windows;component/Assets/updater-128.png"
+                       RenderOptions.BitmapScalingMode="HighQuality"
+                       Focusable="False" AutomationProperties.Name="" />
+                <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Style="{DynamicResource CaptionTextStyle}">
                     <Run Text="App Updater" FontWeight="SemiBold" /> • <Run Text="{Binding AppUpdate.CurrentVersionText, Mode=OneWay}" />
                 </TextBlock>
                 <TextBlock Margin="16,0,0,0" TextAlignment="Right" TextTrimming="CharacterEllipsis"

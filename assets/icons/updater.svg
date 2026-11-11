@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Updater"><title>Updater</title>
+<path d="M140 104 V292 A116 116 0 0 0 256 408" fill="none" stroke="#2D5BFF" stroke-width="84" stroke-linecap="round"/>
+<path d="M256 408 A116 116 0 0 0 372 292 V196" fill="none" stroke="#14C4B0" stroke-width="84" stroke-linecap="butt"/>
+<path d="M372 64 L470 196 H274 Z" fill="#14C4B0" stroke="#14C4B0" stroke-width="24" stroke-linejoin="round"/>
+</svg>

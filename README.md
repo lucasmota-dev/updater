@@ -102,7 +102,8 @@ src/Atualizador.Windows/
 └── Resources/     Temas, cores e estilos dos controles
 tests/Atualizador.Windows.Tests/   Testes automatizados (MSTest)
 installer/Atualizador.iss          Instalador (Inno Setup)
-tools/                             Scripts do CI e do release
+assets/icons/                      Logo do app: updater.svg (origem), updater.png, updater-128.png e Atualizador.ico
+tools/                             Scripts do CI e do release; IconGenerator gera o .ico e o PNG a partir do SVG
 ```
 
 O nome técnico do projeto (namespace, executável, pasta de dados e nomes das tarefas agendadas) continua `Atualizador.Windows`. Isso mantém compatíveis as instalações, os agendamentos e as atualizações automáticas de quem já usa o app.
@@ -139,7 +140,7 @@ Free code signing provided by [SignPath.io](https://about.signpath.io), certific
 
 ## Créditos
 
-- Ícone baseado no símbolo `system_update` do [Material Symbols](https://fonts.google.com/icons), licença Apache 2.0 (`assets/icons/Apache-2.0.txt`).
+- Logo do app: desenho próprio do projeto (`assets/icons/updater.svg`), coberto pela licença MIT do repositório.
 
 ## Autor
 

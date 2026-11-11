@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <Resource Include="..\..\assets\icons\Atualizador.ico" Link="Assets\Atualizador.ico" />
+    <Resource Include="..\..\assets\icons\updater-128.png" Link="Assets\updater-128.png" />
   </ItemGroup>
 
 </Project>

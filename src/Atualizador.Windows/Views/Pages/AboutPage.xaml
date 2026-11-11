@@ -17,11 +17,11 @@
         <StackPanel MaxWidth="720" HorizontalAlignment="Left">
             <!-- Cabeçalho -->
             <DockPanel Margin="0,0,0,16">
-                <Border DockPanel.Dock="Left" Width="44" Height="44" Margin="0,0,12,0" CornerRadius="11"
-                        Background="{DynamicResource AccentBrush}">
-                    <TextBlock Text="&#xE895;" FontSize="20" Foreground="{DynamicResource AccentForegroundBrush}"
-                               Style="{DynamicResource IconTextStyle}" />
-                </Border>
+                <!-- Logo do app (marca do produto). É decorativo: o nome ao lado já identifica a página. -->
+                <Image DockPanel.Dock="Left" Width="44" Height="44" Margin="0,0,12,0"
+                       Source="/Atualizador.Windows;component/Assets/updater-128.png"
+                       RenderOptions.BitmapScalingMode="HighQuality"
+                       Focusable="False" AutomationProperties.Name="" />
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="App Updater" Style="{DynamicResource SectionTitleTextStyle}" />
                     <TextBlock Margin="0,2,0,0" Style="{DynamicResource CaptionTextStyle}">
