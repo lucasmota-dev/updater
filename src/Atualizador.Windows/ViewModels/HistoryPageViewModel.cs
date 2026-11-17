@@ -98,7 +98,7 @@ public sealed class HistoryPageViewModel : PageViewModel
 
     private void ClearHistory()
     {
-        if (!new MessageBoxUserConfirmation().Confirm(
+        if (!new ThemedUserConfirmation().Confirm(
                 "Limpar histórico",
                 "Isso removerá todos os registros locais de verificações e atualizações. Deseja continuar?"))
         {

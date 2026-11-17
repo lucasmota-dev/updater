@@ -29,7 +29,7 @@ public sealed class ScheduleSettingsViewModel : ViewModelBase
         _scheduleStore = scheduleStore;
         _taskSchedulerService = taskSchedulerService;
         _selectedPackagesProvider = selectedPackagesProvider;
-        _confirmation = confirmation ?? new MessageBoxUserConfirmation();
+        _confirmation = confirmation ?? new ThemedUserConfirmation();
         var preferences = scheduleStore.Load();
         _mode = preferences.Mode;
         _intervalHours = preferences.IntervalHours;

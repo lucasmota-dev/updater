@@ -40,7 +40,7 @@ public sealed class AppUpdateViewModel : ViewModelBase, IDisposable
     {
         _notifications = notifications;
         _isPackageWorkRunning = isPackageWorkRunning;
-        _confirmation = confirmation ?? new MessageBoxUserConfirmation();
+        _confirmation = confirmation ?? new ThemedUserConfirmation();
         _preferences = preferences ?? new AppUpdatePreferencesStore();
         _checkOnStartup = _preferences.LoadCheckOnStartup();
         _statusMessage = IsReleaseBuild

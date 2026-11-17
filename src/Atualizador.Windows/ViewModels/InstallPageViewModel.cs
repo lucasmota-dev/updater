@@ -79,7 +79,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
     {
         _wingetService = wingetService;
         _historyStore = historyStore ?? new HistoryStore();
-        _confirmation = confirmation ?? new MessageBoxUserConfirmation();
+        _confirmation = confirmation ?? new ThemedUserConfirmation();
         _notificationService = notificationService;
         _operationGate = operationGate ?? new PackageOperationGate();
         _iconService = iconService;

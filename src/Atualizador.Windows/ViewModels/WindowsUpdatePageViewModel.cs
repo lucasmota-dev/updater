@@ -33,7 +33,7 @@ public sealed class WindowsUpdatePageViewModel : PageViewModel, IDisposable
         : base("Windows Update", "Procure e instale as atualizações do próprio Windows.", "")
     {
         _historyStore = historyStore;
-        _confirmation = confirmation ?? new MessageBoxUserConfirmation();
+        _confirmation = confirmation ?? new ThemedUserConfirmation();
         _notifications = notifications;
         SearchCommand = new AsyncDelegateCommand(SearchAsync, () => !IsBusy);
         InstallCommand = new AsyncDelegateCommand(InstallAsync, () => !IsBusy && HasUpdates);

@@ -18,7 +18,7 @@ public sealed class ExcludedPackagesSettingsViewModel : ViewModelBase
         IUserConfirmation? confirmation = null)
     {
         _store = store;
-        _confirmation = confirmation ?? new MessageBoxUserConfirmation();
+        _confirmation = confirmation ?? new ThemedUserConfirmation();
         ExcludedPackages = new ObservableCollection<ExcludedPackage>(_store.Load());
         _store.Changed += OnStoreChanged;
         RemoveCommand = new DelegateCommand<ExcludedPackage>(RemoveExcludedPackage);
