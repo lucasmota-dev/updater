@@ -15,8 +15,8 @@ namespace Atualizador.Windows.Services;
 /// pelo Explorador de Arquivos, que inicia programas sem elevação, e a cópia elevada fecha.
 /// </para>
 /// <para>
-/// Quando a elevação é realmente necessária (Windows Update ou um instalador que exige administrador),
-/// só o processo daquela operação é elevado, com o aviso do UAC.
+/// Quando a elevação é realmente necessária para um instalador que exige administrador,
+/// só o processo dessa operação é elevado, com o aviso do UAC.
 /// </para>
 /// </summary>
 public static class ElevationGuard

@@ -28,13 +28,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         UpdatesPage = new UpdatesPageViewModel(wingetService, historyStore, excludedPackagesStore, notificationService: _notifications, operationGate: operationGate, iconService: iconService);
         InstallPage = new InstallPageViewModel(wingetService, historyStore, notificationService: _notifications, operationGate: operationGate, iconService: iconService);
         TraySettings = new TraySettingsViewModel(new TrayPreferencesStore());
-        WindowsUpdatePage = new WindowsUpdatePageViewModel(historyStore, notifications: _notifications);
         HistoryPage = new HistoryPageViewModel(historyStore);
 
         // O app não se atualiza enquanto alguma instalação estiver em andamento.
         AppUpdate = new AppUpdateViewModel(
             _notifications,
-            () => UpdatesPage.IsUpdating || InstallPage.IsInstalling || WindowsUpdatePage.IsInstalling);
+            () => UpdatesPage.IsUpdating || InstallPage.IsInstalling);
 
         var schedule = new ScheduleSettingsViewModel(
             new ScheduleStore(),
@@ -47,7 +46,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         [
             UpdatesPage,
             InstallPage,
-            WindowsUpdatePage,
             HistoryPage,
             new SettingsPageViewModel(new AppearanceService(), schedule, startup, TraySettings, excludedSettings),
             new AboutPageViewModel(AppUpdate)
@@ -110,8 +108,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public InstallPageViewModel InstallPage { get; }
 
-    public WindowsUpdatePageViewModel WindowsUpdatePage { get; }
-
     public HistoryPageViewModel HistoryPage { get; }
 
     public TraySettingsViewModel TraySettings { get; }
@@ -130,13 +126,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         AppUpdate.Dispose();
         UpdatesPage.Dispose();
         InstallPage.Dispose();
-        WindowsUpdatePage.Dispose();
         _operationGate.Dispose();
     }
 
     /// <summary>
     /// Ações automáticas ao abrir uma página: Atualizações busca de novo se a lista estiver antiga,
-    /// Windows Update procura na primeira visita e Histórico recarrega os registros novos.
+    /// e Histórico recarrega os registros novos.
     /// </summary>
     private static void OnPageOpened(PageViewModel page)
     {
@@ -144,9 +139,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             case UpdatesPageViewModel updates:
                 _ = updates.RefreshIfStaleAsync();
-                break;
-            case WindowsUpdatePageViewModel windowsUpdate:
-                _ = windowsUpdate.SearchOnFirstOpenAsync();
                 break;
             case HistoryPageViewModel history:
                 history.RefreshCommand.Execute(null);

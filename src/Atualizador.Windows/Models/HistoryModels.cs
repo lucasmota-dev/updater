@@ -4,8 +4,7 @@ public enum HistoryOperation
 {
     Descoberta,
     Atualizacao,
-    Instalacao,
-    WindowsUpdate
+    Instalacao
 }
 
 public enum HistoryEntryStatus

@@ -9,9 +9,7 @@ namespace Atualizador.Windows;
 /// <item>sem argumentos: abre a janela principal;</item>
 /// <item><c>--minimized</c>: usado pela inicialização com o Windows; fica só na área de notificação,
 /// sem mostrar a janela nem tirar o foco do que o usuário está fazendo;</item>
-/// <item><c>--scheduled</c>: chamado pela tarefa agendada; atualiza sem janela e encerra com um código de saída;</item>
-/// <item><c>--install-windows-updates &lt;id&gt;</c>: cópia elevada que instala as atualizações do Windows
-/// (veja <see cref="WindowsUpdateInstallLauncher"/>).</item>
+/// <item><c>--scheduled</c>: chamado pela tarefa agendada; atualiza sem janela e encerra com um código de saída.</item>
 /// </list>
 /// Qualquer outro argumento é recusado (código 2), para que ninguém use o app para executar comandos arbitrários.
 /// </summary>
@@ -49,13 +47,6 @@ public partial class App : System.Windows.Application
         {
             var exitCode = await new ScheduledRunService().RunAsync();
             Shutdown(exitCode);
-            return;
-        }
-
-        // Cópia elevada (UAC) aberta pela página Windows Update para instalar as atualizações.
-        if (WindowsUpdateInstallLauncher.TryParseElevatedArguments(e.Args, out var runId))
-        {
-            Shutdown(await Task.Run(() => WindowsUpdateInstallLauncher.RunElevated(runId)));
             return;
         }
 

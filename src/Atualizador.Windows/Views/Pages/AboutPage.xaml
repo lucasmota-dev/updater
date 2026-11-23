@@ -32,7 +32,7 @@
 
             <GroupBox Header="O que é" Style="{DynamicResource SettingsGroupStyle}">
                 <TextBlock TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}"
-                           Text="O App Updater mantém o seu computador atualizado em um só lugar: os aplicativos instalados, pelo WinGet, e o próprio Windows, pelo Windows Update. Você vê o que tem versão nova, escolhe o que atualizar e acompanha o progresso, sem abrir o terminal." />
+                           Text="O App Updater mantém os aplicativos instalados atualizados pelo WinGet. Você vê o que tem versão nova, escolhe o que atualizar e acompanha o progresso, sem abrir o terminal." />
             </GroupBox>
 
             <GroupBox Header="Como funciona" Style="{DynamicResource SettingsGroupStyle}">
@@ -42,8 +42,6 @@
                     <TextBlock Style="{StaticResource BulletTextStyle}"
                                Text="• Instalar: pesquisa o catálogo do WinGet, mesmo com o nome digitado de forma aproximada, e instala os aplicativos escolhidos." />
                     <TextBlock Style="{StaticResource BulletTextStyle}"
-                               Text="• Windows Update: procura as atualizações do sistema e as instala com a permissão de administrador, pedida só na hora da instalação." />
-                    <TextBlock Style="{StaticResource BulletTextStyle}"
                                Text="• Agendamento e exclusões: atualiza sozinho no horário escolhido e nunca mexe nos aplicativos que você excluiu." />
                     <TextBlock Style="{StaticResource BulletTextStyle}"
                                Text="• Segurança: o app roda sem permissão de administrador, não executa comandos digitados e guarda o histórico só neste computador." />
@@ -52,7 +50,7 @@
 
             <GroupBox Header="Por que foi criado" Style="{DynamicResource SettingsGroupStyle}">
                 <TextBlock TextWrapping="Wrap" Style="{DynamicResource BodyTextStyle}"
-                           Text="O App Updater nasceu de um script de manutenção que atualizava o Windows e todos os programas de uma vez. A ideia foi transformar esse script em um aplicativo seguro e fácil de usar, com controle sobre o que é atualizado, histórico e agendamento, para que qualquer pessoa consiga manter o computador em dia." />
+                           Text="O App Updater nasceu de um script de manutenção que atualizava todos os programas de uma vez. A ideia foi transformar esse script em um aplicativo seguro e fácil de usar, com controle sobre o que é atualizado, histórico e agendamento, para que qualquer pessoa consiga manter o computador em dia." />
             </GroupBox>
 
             <GroupBox Header="Criador" Style="{DynamicResource SettingsGroupStyle}">
