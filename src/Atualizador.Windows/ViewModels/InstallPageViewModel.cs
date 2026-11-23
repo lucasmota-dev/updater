@@ -58,6 +58,7 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
     private readonly PackageOperationGate _operationGate;
     private readonly PackageIconService? _iconService;
     private readonly ListCollectionView _filteredPackages;
+    private readonly Dictionary<string, List<InstallItemViewModel>> _packagesByKey = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _searchCancellation;
     private CancellationTokenSource? _currentInstallCancellation;
@@ -295,7 +296,11 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
             package.IsSelected = false;
         }
 
-        SyncResultStatuses();
+        foreach (var package in toAdd)
+        {
+            SyncResultStatus(InstallQueueItemViewModel.QueueKey(package.Package));
+        }
+
         StatusMessage = $"{toAdd.Length} aplicativo(s) adicionado(s) à fila de instalação.";
         _ = ProcessQueueAsync();
     }
@@ -413,21 +418,26 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
     {
         if (item is { IsPending: true })
         {
+            var key = item.Key;
             item.PropertyChanged -= OnQueueItemChanged;
             Queue.Remove(item);
-            SyncResultStatuses();
+            SyncResultStatus(key);
         }
     }
 
     private void ClearFinished()
     {
-        foreach (var item in Queue.Where(item => item.IsFinished).ToArray())
+        var finished = Queue.Where(item => item.IsFinished).ToArray();
+        foreach (var item in finished)
         {
             item.PropertyChanged -= OnQueueItemChanged;
             Queue.Remove(item);
         }
 
-        SyncResultStatuses();
+        foreach (var key in finished.Select(item => item.Key).Distinct(StringComparer.Ordinal))
+        {
+            SyncResultStatus(key);
+        }
     }
 
     private void ReplacePackages(IEnumerable<InstallablePackage> packages)
@@ -438,11 +448,21 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
         }
 
         Packages.Clear();
+        _packagesByKey.Clear();
         foreach (var package in packages)
         {
             var item = new InstallItemViewModel(package, _iconService);
             item.PropertyChanged += OnPackagePropertyChanged;
             Packages.Add(item);
+
+            var key = InstallQueueItemViewModel.QueueKey(package);
+            if (!_packagesByKey.TryGetValue(key, out var matchingPackages))
+            {
+                matchingPackages = [];
+                _packagesByKey.Add(key, matchingPackages);
+            }
+
+            matchingPackages.Add(item);
         }
 
         _filteredPackages.Refresh();
@@ -455,11 +475,29 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
     private void SyncResultStatuses()
     {
         var byKey = Queue.GroupBy(item => item.Key).ToDictionary(group => group.Key, group => group.Last());
-        foreach (var package in Packages)
+        foreach (var (key, packages) in _packagesByKey)
         {
-            package.StatusMessage = byKey.TryGetValue(InstallQueueItemViewModel.QueueKey(package.Package), out var queued)
+            var statusMessage = byKey.TryGetValue(key, out var queued)
                 ? queued.StatusMessage
                 : string.Empty;
+            foreach (var package in packages)
+            {
+                package.StatusMessage = statusMessage;
+            }
+        }
+    }
+
+    private void SyncResultStatus(string key)
+    {
+        if (!_packagesByKey.TryGetValue(key, out var packages))
+        {
+            return;
+        }
+
+        var statusMessage = Queue.LastOrDefault(item => item.Key == key)?.StatusMessage ?? string.Empty;
+        foreach (var package in packages)
+        {
+            package.StatusMessage = statusMessage;
         }
     }
 
@@ -473,11 +511,14 @@ public sealed class InstallPageViewModel : PageViewModel, IDisposable
 
     private void OnQueueItemChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(InstallQueueItemViewModel.Status) or nameof(InstallQueueItemViewModel.StatusMessage))
+        if (sender is not InstallQueueItemViewModel item
+            || e.PropertyName is not (nameof(InstallQueueItemViewModel.Status) or nameof(InstallQueueItemViewModel.StatusMessage)))
         {
-            SyncResultStatuses();
-            RaiseQueueChanged();
+            return;
         }
+
+        SyncResultStatus(item.Key);
+        RaiseQueueChanged();
     }
 
     private void RaiseSelectionChanged()

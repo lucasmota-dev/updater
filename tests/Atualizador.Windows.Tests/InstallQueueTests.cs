@@ -32,6 +32,7 @@ public sealed class InstallQueueTests
         viewModel.AreAllSelected = true;
         viewModel.AddSelectedToQueueCommand.Execute(null);
         await WaitUntilAsync(() => service.Started.Count == 1);
+        Assert.AreEqual("Instalando…", viewModel.Packages.Single().StatusMessage);
 
         // Enquanto instala: nova pesquisa e mais um app na fila (era aqui que falhava).
         service.SearchResults = [Package("Discord.Discord")];
@@ -50,6 +51,15 @@ public sealed class InstallQueueTests
 
         CollectionAssert.AreEqual(new[] { "Mozilla.Firefox", "Discord.Discord" }, service.Started.ToArray());
         Assert.IsTrue(viewModel.Queue.All(item => item.Status == PackageUpdateStatus.Succeeded));
+        Assert.AreEqual("Instalado.", viewModel.Packages.Single().StatusMessage);
+
+        service.SearchResults = [Package("Mozilla.Firefox")];
+        viewModel.SearchQuery = "firefox";
+        await viewModel.SearchAsync();
+        Assert.AreEqual("Instalado.", viewModel.Packages.Single().StatusMessage);
+
+        viewModel.ClearFinishedCommand.Execute(null);
+        Assert.AreEqual(string.Empty, viewModel.Packages.Single().StatusMessage);
     }
 
     [TestMethod]
